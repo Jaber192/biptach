@@ -8,7 +8,7 @@ Last Updated: 24 July 2026
 
 # Project Overview
 
-Biptach is a modern HVAC Field Service Management (FSM) SaaS designed specifically for small-to-medium HVAC companies with approximately 10–50 technicians.
+Biptach is a modern HVAC Field Service Management (FSM) SaaS designed specifically for small-to-medium HVAC companies with approximately solo worker to – 50 technicians.
 
 The goal is to build the easiest HVAC software to learn and use while providing all of the essential tools needed to manage technicians, customers, scheduling, dispatching, and work orders.
 
