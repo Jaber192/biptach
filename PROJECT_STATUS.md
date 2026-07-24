@@ -28,7 +28,7 @@ Every AI MUST update this file before ending its work session.
 
 Overall Completion
 
-0%
+12%
 
 Current Release
 
@@ -44,8 +44,8 @@ MVP Development
 
 | Milestone | Status | Progress |
 |------------|---------|----------|
-| 1. Marketing Website | 🟡 In Progress | 0% |
-| 2. Authentication & User Roles | ⚪ Not Started | 0% |
+| 1. Marketing Website | ✅ Completed | 100% |
+| 2. Authentication & User Roles | 🟡 In Progress | 0% |
 | 3. Customer Management | ⚪ Not Started | 0% |
 | 4. Work Orders | ⚪ Not Started | 0% |
 | 5. Scheduling & Dispatch | ⚪ Not Started | 0% |
@@ -59,7 +59,7 @@ MVP Development
 
 Current Milestone
 
-Milestone 1 — Marketing Website
+Milestone 2 — Authentication & User Roles
 
 Status
 
@@ -67,11 +67,11 @@ Status
 
 Current Task
 
-Project has not started yet.
+Milestone 1 completed. Milestone 2 not started.
 
 Next Task
 
-Build Landing Page.
+Set up authentication with user roles (Admin, Manager, Technician).
 
 Estimated Completion
 
@@ -83,21 +83,75 @@ Unknown
 
 ## Marketing Website
 
-- [ ] Sticky Navigation
-- [ ] Hero Section
-- [ ] Dashboard Mockup
-- [ ] Features Section
-- [ ] How It Works
-- [ ] Pricing
-- [ ] CTA Banner
-- [ ] Footer
-- [ ] Responsive Design
-- [ ] Dark Mode
-- [ ] Animations
+- [x] Sticky Navigation
+- [x] Hero Section
+- [x] Dashboard Mockup
+- [x] Features Section
+- [x] How It Works
+- [x] Pricing
+- [x] CTA Banner
+- [x] Footer
+- [x] Responsive Design
+- [x] Dark Mode
+- [x] Animations
 
 ---
 
 # Completed Milestones
+
+## Milestone 1 — Marketing Website
+
+Completed On
+
+2026-07-24
+
+Summary
+
+- Sticky navigation bar with scroll-aware blur background, mobile hamburger menu, and theme toggle
+- Hero section with animated headline, CTAs, and a realistic dashboard dispatch mockup
+- Features section showcasing 8 core product capabilities with icon cards and hover states
+- How It Works section with a 4-step flow and connecting timeline
+- Pricing section with 3 tiers (Solo, Team, Business) and a highlighted "most popular" plan
+- CTA banner with gradient background and decorative accents
+- Footer with logo, product/company/support link columns, and copyright
+- Full light/dark mode support with system preference detection and localStorage persistence
+- Responsive design across mobile, tablet, and desktop breakpoints
+- Subtle entrance and scroll-triggered animations using Motion
+- DM Sans font, blue primary / green accent color system, 0.75rem border radius per design spec
+
+Important Notes
+
+- Tech stack: React 19, Vite 6, TypeScript 5, Tailwind CSS 4, Motion, Lucide React
+- Tailwind 4 configured via @tailwindcss/vite plugin with @theme tokens in src/styles/index.css
+- Theme state managed via useTheme hook with localStorage persistence
+- Production build and typecheck both pass cleanly
+
+Files Created
+
+- package.json
+- vite.config.ts
+- tsconfig.json
+- index.html
+- public/favicon.svg
+- src/main.tsx
+- src/App.tsx
+- src/vite-env.d.ts
+- src/styles/index.css
+- src/hooks/useTheme.ts
+- src/components/Logo.tsx
+- src/components/Navbar.tsx
+- src/components/Hero.tsx
+- src/components/Features.tsx
+- src/components/HowItWorks.tsx
+- src/components/Pricing.tsx
+- src/components/CtaBanner.tsx
+- src/components/Footer.tsx
+
+Files Modified
+
+- PROJECT_STATUS.md
+
+Known Issues
 
 None
 
@@ -145,14 +199,19 @@ Session Date
 
 Work Completed
 
-- Repository initialized
-- MASTER_SPEC.md completed
-- PROJECT_STATUS.md created
+- Scaffolded Vite + React 19 + TypeScript + Tailwind CSS 4 project
+- Built complete marketing landing page (Milestone 1)
+- Implemented sticky nav, hero with dashboard mockup, features, how-it-works, pricing, CTA, footer
+- Added dark mode with system preference detection and localStorage persistence
+- Added scroll-triggered and entrance animations via Motion
+- Production build and typecheck pass cleanly
 
 Files Modified
 
-- README.md
-- MASTER_SPEC.md
+- package.json, vite.config.ts, tsconfig.json, index.html
+- src/main.tsx, src/App.tsx, src/vite-env.d.ts
+- src/styles/index.css, src/hooks/useTheme.ts
+- src/components/Logo.tsx, Navbar.tsx, Hero.tsx, Features.tsx, HowItWorks.tsx, Pricing.tsx, CtaBanner.tsx, Footer.tsx
 - PROJECT_STATUS.md
 
 Current Blocker
@@ -161,7 +220,7 @@ None
 
 Recommended Next Step
 
-Build Milestone 1.
+Start Milestone 2 — Authentication & User Roles.
 
 ---
 
@@ -172,10 +231,12 @@ Every important technical decision must be recorded here.
 Current Decisions
 
 - React 19
-- Vite
+- Vite 6
 - Convex
-- Tailwind CSS 4
-- shadcn/ui
+- Tailwind CSS 4 (via @tailwindcss/vite)
+- Motion (animation)
+- Lucide React (icons)
+- DM Sans font, blue primary / green accent color system, 0.75rem radius
 - OIDC Authentication
 - Offline-first technician experience
 - Mobile-first design
@@ -256,18 +317,19 @@ Completed Work
 
 - MASTER_SPEC.md
 - PROJECT_STATUS.md
+- Milestone 1 — Marketing Website (complete)
 
 Current Milestone
 
-Marketing Website
+Authentication & User Roles
 
 Current Task
 
-Start building the landing page.
+Start Milestone 2 — set up authentication with user roles.
 
 Next Milestone
 
-Authentication & User Roles
+Customer Management
 
 Current Priorities
 
@@ -351,27 +413,27 @@ Before ending every work session the AI MUST write:
 
 Session Completed
 
-YES / NO
+YES
 
 Reason Stopped
 
-(Current task completed / Token limit / Waiting for approval / Error)
+Current milestone completed, awaiting approval to proceed to Milestone 2.
 
 Last Finished Task
 
-...
+Milestone 1 — Marketing Website fully built, typechecked, and production build verified.
 
 Current Working File
 
-...
+PROJECT_STATUS.md
 
 Next Recommended Action
 
-...
+Start Milestone 2 — Authentication & User Roles.
 
 Estimated Remaining Work
 
-...
+7 milestones remaining.
 
 ---
 
