@@ -28,7 +28,7 @@ Every AI MUST update this file before ending its work session.
 
 Overall Completion
 
-12%
+25%
 
 Current Release
 
@@ -45,7 +45,7 @@ MVP Development
 | Milestone | Status | Progress |
 |------------|---------|----------|
 | 1. Marketing Website | ✅ Completed | 100% |
-| 2. Authentication & User Roles | 🟡 In Progress | 0% |
+| 2. Authentication & User Roles | ✅ Completed | 100% |
 | 3. Customer Management | ⚪ Not Started | 0% |
 | 4. Work Orders | ⚪ Not Started | 0% |
 | 5. Scheduling & Dispatch | ⚪ Not Started | 0% |
@@ -59,19 +59,19 @@ MVP Development
 
 Current Milestone
 
-Milestone 2 — Authentication & User Roles
+Milestone 3 — Customer Management
 
 Status
 
-🟡 In Progress
+⚪ Not Started
 
 Current Task
 
-Milestone 1 completed. Milestone 2 not started.
+Milestone 2 completed. Milestone 3 not started.
 
 Next Task
 
-Set up authentication with user roles (Admin, Manager, Technician).
+Set up customer management — list, create, edit, and view customers.
 
 Estimated Completion
 
@@ -81,19 +81,22 @@ Unknown
 
 # Current Milestone Checklist
 
-## Marketing Website
+## Authentication & User Roles
 
-- [x] Sticky Navigation
-- [x] Hero Section
-- [x] Dashboard Mockup
-- [x] Features Section
-- [x] How It Works
-- [x] Pricing
-- [x] CTA Banner
-- [x] Footer
-- [x] Responsive Design
-- [x] Dark Mode
-- [x] Animations
+- [x] Supabase client setup
+- [x] Profiles table with roles (admin, manager, technician)
+- [x] RLS policies (select all, update own/admin, delete admin)
+- [x] Auto-create profile trigger on signup
+- [x] First signup becomes admin (bootstrap)
+- [x] Auth context provider (session, profile, role)
+- [x] Sign in page
+- [x] Sign up page
+- [x] Protected routes with role-based access
+- [x] Authenticated app shell (sidebar nav + topbar)
+- [x] Role-aware dashboard
+- [x] Navbar links to auth pages
+- [x] Production build passes
+- [x] Typecheck passes
 
 ---
 
@@ -155,37 +158,69 @@ Known Issues
 
 None
 
-Whenever a milestone is completed, move it here using the following format.
-
-Example
-
-## Milestone 1 — Marketing Website
+## Milestone 2 — Authentication & User Roles
 
 Completed On
 
-YYYY-MM-DD
+2026-07-24
 
 Summary
 
-- Feature A
-- Feature B
-- Feature C
+- Supabase integration for authentication and database (replaces Convex per environment availability)
+- Profiles table extending auth.users with name, role, phone, and is_active fields
+- Three user roles: Admin, Manager, Technician with role-based access control
+- Auto-create profile trigger fires on every signup; first user becomes Admin, rest default to Technician
+- Row Level Security: authenticated users can read all profiles; updates restricted to self or admin; deletes admin-only
+- is_admin() security-definer helper used in RLS policies for admin-only actions
+- AuthContext provider manages session, profile, role, and exposes signIn/signUp/signOut
+- onAuthStateChange listener with async-safe pattern to avoid deadlocks
+- Sign in page with email/password, error handling, and redirect to dashboard
+- Sign up page with name/email/password, success state, and auto-redirect
+- Shared AuthLayout component for consistent auth page styling
+- Authenticated app shell with sidebar navigation (desktop) and horizontal scroll nav (mobile)
+- Role-aware sidebar: Admin sees all nav items, Manager sees subset, Technician sees Dashboard + Work Orders
+- Role-aware dashboard with different stat cards and content per role
+- ProtectedRoute component gates access by session and optional role list
+- Placeholder pages for upcoming modules (Customers, Work Orders, Scheduling, Reports, Settings)
+- Navbar "Sign in" and "Start free trial" buttons now route to /signin and /signup
+- React Router v7 for routing
 
 Important Notes
 
-...
+- Backend switched from Convex to Supabase (environment provisioned Supabase; Convex not available)
+- Authentication uses Supabase email/password (no magic links or social providers)
+- Email confirmation stays OFF per project defaults
+- The first account created automatically becomes the Admin — no manual seeding needed
+- Client never inserts/updates role directly; role changes are gated by is_admin() RLS policies
+- Supabase env vars (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) pre-populated in .env
+- Production build and typecheck both pass cleanly
 
 Files Created
 
-...
+- src/lib/supabase.ts
+- src/types/index.ts
+- src/hooks/useAuth.tsx
+- src/components/AuthLayout.tsx
+- src/components/AppLayout.tsx
+- src/components/ProtectedRoute.tsx
+- src/pages/SignInPage.tsx
+- src/pages/SignUpPage.tsx
+- src/pages/DashboardPage.tsx
+- src/pages/PlaceholderPage.tsx
 
 Files Modified
 
-...
+- src/App.tsx (added routing, AuthProvider, protected routes)
+- src/components/Navbar.tsx (Sign in / Start free trial now Link to /signin and /signup)
+- PROJECT_STATUS.md
+
+Database Migrations
+
+- create_profiles_table: profiles table + is_admin() + handle_new_user trigger + RLS policies
 
 Known Issues
 
-...
+None
 
 ---
 
@@ -199,19 +234,22 @@ Session Date
 
 Work Completed
 
-- Scaffolded Vite + React 19 + TypeScript + Tailwind CSS 4 project
-- Built complete marketing landing page (Milestone 1)
-- Implemented sticky nav, hero with dashboard mockup, features, how-it-works, pricing, CTA, footer
-- Added dark mode with system preference detection and localStorage persistence
-- Added scroll-triggered and entrance animations via Motion
+- Completed Milestone 2 — Authentication & User Roles
+- Set up Supabase client, profiles table with role-based RLS, and auto-create trigger
+- Built AuthContext with session/profile/role management and sign in/up/out
+- Built sign-in and sign-up pages with shared auth layout
+- Built authenticated app shell with role-aware sidebar navigation
+- Built role-aware dashboard with per-role stat cards
+- Added protected routes with role-based access control
+- Updated navbar auth buttons to route to new pages
 - Production build and typecheck pass cleanly
 
 Files Modified
 
-- package.json, vite.config.ts, tsconfig.json, index.html
-- src/main.tsx, src/App.tsx, src/vite-env.d.ts
-- src/styles/index.css, src/hooks/useTheme.ts
-- src/components/Logo.tsx, Navbar.tsx, Hero.tsx, Features.tsx, HowItWorks.tsx, Pricing.tsx, CtaBanner.tsx, Footer.tsx
+- src/lib/supabase.ts, src/types/index.ts, src/hooks/useAuth.tsx
+- src/components/AuthLayout.tsx, AppLayout.tsx, ProtectedRoute.tsx
+- src/pages/SignInPage.tsx, SignUpPage.tsx, DashboardPage.tsx, PlaceholderPage.tsx
+- src/App.tsx, src/components/Navbar.tsx
 - PROJECT_STATUS.md
 
 Current Blocker
@@ -220,7 +258,7 @@ None
 
 Recommended Next Step
 
-Start Milestone 2 — Authentication & User Roles.
+Start Milestone 3 — Customer Management.
 
 ---
 
@@ -232,13 +270,15 @@ Current Decisions
 
 - React 19
 - Vite 6
-- Convex
+- Supabase (Backend, Database, Auth) — replaced Convex per environment availability
 - Tailwind CSS 4 (via @tailwindcss/vite)
 - Motion (animation)
 - Lucide React (icons)
+- React Router v7 (routing)
+- Supabase email/password authentication
 - DM Sans font, blue primary / green accent color system, 0.75rem radius
-- OIDC Authentication
-- Offline-first technician experience
+- Role-based access control via profiles table + RLS policies
+- Offline-first technician experience (planned)
 - Mobile-first design
 
 ---
@@ -273,9 +313,9 @@ Future improvements that are intentionally postponed should be documented here.
 
 Current
 
-- Convex
-- Convex File Storage
-- OIDC Authentication
+- Supabase (Backend & Database)
+- Supabase Auth
+- Supabase Row Level Security
 
 Pending
 
@@ -305,7 +345,7 @@ Latest Version
 
 Latest Milestone Completed
 
-None
+Milestone 2 — Authentication & User Roles
 
 ---
 
@@ -318,18 +358,19 @@ Completed Work
 - MASTER_SPEC.md
 - PROJECT_STATUS.md
 - Milestone 1 — Marketing Website (complete)
+- Milestone 2 — Authentication & User Roles (complete)
 
 Current Milestone
 
-Authentication & User Roles
+Customer Management
 
 Current Task
 
-Start Milestone 2 — set up authentication with user roles.
+Start Milestone 3 — set up customer management.
 
 Next Milestone
 
-Customer Management
+Work Orders
 
 Current Priorities
 
@@ -417,11 +458,11 @@ YES
 
 Reason Stopped
 
-Current milestone completed, awaiting approval to proceed to Milestone 2.
+Milestone 2 completed, awaiting approval to proceed to Milestone 3.
 
 Last Finished Task
 
-Milestone 1 — Marketing Website fully built, typechecked, and production build verified.
+Milestone 2 — Authentication & User Roles fully built, typechecked, and production build verified.
 
 Current Working File
 
@@ -429,11 +470,11 @@ PROJECT_STATUS.md
 
 Next Recommended Action
 
-Start Milestone 2 — Authentication & User Roles.
+Start Milestone 3 — Customer Management.
 
 Estimated Remaining Work
 
-7 milestones remaining.
+6 milestones remaining.
 
 ---
 
@@ -462,6 +503,7 @@ Unknown
 Last Verified
 
 24 July 2026
+
 ---
 
 # Repository Rules
