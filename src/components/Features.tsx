@@ -1,14 +1,5 @@
 import { motion } from "motion/react";
-import {
-  CalendarDays,
-  Users,
-  ClipboardList,
-  Smartphone,
-  Camera,
-  PenLine,
-  Bell,
-  BarChart3,
-} from "lucide-react";
+import { CalendarDays, Users, ClipboardList, Smartphone, Camera, PenLine, Bell, ChartBar as BarChart3 } from "lucide-react";
 
 const FEATURES = [
   {

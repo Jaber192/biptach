@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { ArrowRight, CheckCircle2, Clock, MapPin, Wrench } from "lucide-react";
+import { ArrowRight, CircleCheck as CheckCircle2, Clock, MapPin, Wrench } from "lucide-react";
 
 export function Hero() {
   return (

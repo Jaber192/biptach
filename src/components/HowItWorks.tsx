@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { UserPlus, CalendarCheck, Smartphone, CheckCircle2 } from "lucide-react";
+import { UserPlus, CalendarCheck, Smartphone, CircleCheck as CheckCircle2 } from "lucide-react";
 
 const STEPS = [
   {
