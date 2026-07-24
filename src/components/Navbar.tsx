@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Menu, X, Moon, Sun } from "lucide-react";
 import { Logo } from "./Logo";
 import { useTheme } from "../hooks/useTheme";
@@ -54,18 +55,18 @@ export function Navbar() {
           >
             {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </button>
-          <a
-            href="#"
+          <Link
+            to="/signin"
             className="text-sm font-semibold text-slate-700 transition-colors hover:text-primary-600 dark:text-slate-200 dark:hover:text-primary-400"
           >
             Sign in
-          </a>
-          <a
-            href="#pricing"
+          </Link>
+          <Link
+            to="/signup"
             className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow-md"
           >
             Start free trial
-          </a>
+          </Link>
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
@@ -100,19 +101,20 @@ export function Navbar() {
               </a>
             ))}
             <div className="mt-3 flex flex-col gap-2">
-              <a
-                href="#"
+              <Link
+                to="/signin"
+                onClick={() => setMenuOpen(false)}
                 className="rounded-lg border border-slate-200 px-4 py-2.5 text-center text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
               >
                 Sign in
-              </a>
-              <a
-                href="#pricing"
+              </Link>
+              <Link
+                to="/signup"
                 onClick={() => setMenuOpen(false)}
                 className="rounded-lg bg-primary-600 px-4 py-2.5 text-center text-sm font-semibold text-white"
               >
                 Start free trial
-              </a>
+              </Link>
             </div>
           </div>
         </div>
