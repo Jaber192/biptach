@@ -1,6 +1,6 @@
 # Biptach Master Specification
 
-Version: 1.0
+Version: 1.0.0
 
 Last Updated: 24 July 2026
 
@@ -8,7 +8,7 @@ Last Updated: 24 July 2026
 
 # Project Overview
 
-Biptach is a modern HVAC Field Service Management (FSM) SaaS designed specifically for small-to-medium HVAC companies with approximately solo worker to – 50 technicians.
+Biptach is a modern HVAC Field Service Management (FSM) SaaS designed specifically for HVAC companies ranging from solo operators to businesses with up to 50 technicians.
 
 The goal is to build the easiest HVAC software to learn and use while providing all of the essential tools needed to manage technicians, customers, scheduling, dispatching, and work orders.
 
@@ -367,25 +367,124 @@ Every AI working on this project must:
 
 ---
 
-# Current Progress
+# Offline-First Requirements
 
-Current Milestone
+Biptach must support offline operation for technicians.
 
-Project Initialization
+When internet is unavailable:
 
-Completed
+- Technician can view previously synced assigned jobs.
+- Technician can read customer information.
+- Technician can view job details.
+- Technician can add technician notes.
+- Technician can capture customer signatures.
+- Technician can take photos.
+- Technician can start and complete jobs.
+- All changes are stored locally on the device.
 
-- GitHub Repository Created
-- Bolt Connected
+When the device reconnects:
 
-In Progress
+- Automatically synchronize all pending changes.
+- Upload photos and signatures.
+- Resolve conflicts safely.
+- Update the dashboard in real time.
 
-- Project Setup
+Managers and dispatchers require an internet connection.
+Offline mode is primarily designed for technicians in the field.
+---
+# Folder Structure
 
-Next
+The project must maintain a clean, scalable folder structure.
 
-- Marketing Landing Page
+Example:
 
-Known Issues
+src/
+├── components/
+├── pages/
+├── layouts/
+├── hooks/
+├── lib/
+├── services/
+├── utils/
+├── types/
+├── assets/
+├── styles/
 
-None
+convex/
+├── schema.ts
+├── auth.ts
+├── users.ts
+├── customers.ts
+├── workOrders.ts
+
+Every new feature should be added to the appropriate folder.
+Avoid creating duplicate components or business logic.
+
+---
+
+# Third-Party Integrations
+
+Current
+
+- Convex (Backend & Database)
+- Convex File Storage
+- OIDC Authentication
+- Google Maps Platform
+- Email Provider
+- SMS Provider
+
+Future
+
+- Stripe
+- QuickBooks
+- Twilio
+- Google Calendar
+- Outlook Calendar
+
+---
+
+# Non-Functional Requirements
+
+The application must:
+
+- Be mobile-first.
+- Load pages in under 2 seconds under normal conditions.
+- Support offline mode for technicians.
+- Synchronize automatically when internet returns.
+- Use secure authentication.
+- Enforce role-based permissions.
+- Scale to at least 50 technicians per company.
+- Support dark mode.
+- Minimize battery usage on technician devices.
+- Be accessible where practical.
+
+---
+
+# Success Metrics
+
+The MVP is successful when:
+
+- A customer can be created in under 30 seconds.
+- A work order can be created in under 30 seconds.
+- A technician can start a job in under 10 seconds.
+- Dashboard loads in under 2 seconds.
+- Offline technician mode works correctly.
+- Photo uploads work reliably.
+- Signature capture works correctly.
+- Managers can monitor technician progress in real time.
+- System supports at least 50 technicians without noticeable performance issues.
+
+---
+
+
+# Future Database Expansion
+
+Location Tracking
+
+- technicianId
+- latitude
+- longitude
+- timestamp
+- accuracy
+---
+
