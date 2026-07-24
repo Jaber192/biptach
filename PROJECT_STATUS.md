@@ -520,3 +520,77 @@ Always
 - Keep commits focused.
 - Preserve backward compatibility.
 - Keep folder structure organized.
+
+---
+
+# Security Vulnerability Checklist
+
+Every AI MUST review security impact before completing tasks.
+
+## Injection Attacks
+
+- [ ] SQL Injection checked
+- [ ] NoSQL/Query Injection checked
+- [ ] Command Injection checked
+- [ ] Template Injection checked
+- [ ] User input sanitized
+
+## Authentication Security
+
+- [ ] Authentication bypass checked
+- [ ] Session handling reviewed
+- [ ] Token security reviewed
+- [ ] OAuth configuration reviewed
+
+## Authorization Security
+
+- [ ] Role escalation checked
+- [ ] Permission boundaries tested
+- [ ] Multi-tenant data isolation verified
+- [ ] Users cannot access other companies' data
+
+## Web Application Security
+
+- [ ] XSS prevention checked
+- [ ] CSRF protection checked
+- [ ] Clickjacking protection considered
+- [ ] Secure headers configured
+
+## Data Security
+
+- [ ] Sensitive data exposure checked
+- [ ] File upload security checked
+- [ ] Secrets/API keys protected
+- [ ] Logs do not expose private data
+
+## Dependency Security
+
+- [ ] npm packages audited
+- [ ] Known vulnerabilities reviewed
+- [ ] Dependencies updated carefully
+
+## Infrastructure Security
+
+- [ ] Environment variables secured
+- [ ] Production configuration reviewed
+- [ ] Database permissions reviewed
+
+---
+
+# Vulnerability Register
+
+| Date | Vulnerability | Severity | Status | Fix |
+|------|---------------|----------|--------|-----|
+| None | None | None | None | None |
+
+---
+
+# Security Testing Tools
+
+Planned:
+
+- npm audit
+- Dependabot
+- OWASP ZAP
+- SAST scanning
+- Manual security review
