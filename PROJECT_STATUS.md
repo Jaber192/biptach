@@ -28,7 +28,7 @@ Every AI MUST update this file before ending its work session.
 
 Overall Completion
 
-25%
+31%
 
 Current Release
 
@@ -46,7 +46,7 @@ MVP Development
 |------------|---------|----------|
 | 1. Marketing Website | ✅ Completed | 100% |
 | 2. Authentication & User Roles | ✅ Completed | 100% |
-| 3. Customer Management | ⚪ Not Started | 0% |
+| 3. Customer Management | ✅ Completed | 100% |
 | 4. Work Orders | ⚪ Not Started | 0% |
 | 5. Scheduling & Dispatch | ⚪ Not Started | 0% |
 | 6. Technician Mobile | ⚪ Not Started | 0% |
@@ -59,7 +59,7 @@ MVP Development
 
 Current Milestone
 
-Milestone 3 — Customer Management
+Milestone 4 — Work Orders
 
 Status
 
@@ -67,11 +67,11 @@ Status
 
 Current Task
 
-Milestone 2 completed. Milestone 3 not started.
+Milestone 3 completed. Milestone 4 not started.
 
 Next Task
 
-Set up customer management — list, create, edit, and view customers.
+Set up work orders — list, create, edit, and view work orders with customer linkage.
 
 Estimated Completion
 
@@ -81,22 +81,21 @@ Unknown
 
 # Current Milestone Checklist
 
-## Authentication & User Roles
+## Customer Management
 
-- [x] Supabase client setup
-- [x] Profiles table with roles (admin, manager, technician)
-- [x] RLS policies (select all, update own/admin, delete admin)
-- [x] Auto-create profile trigger on signup
-- [x] First signup becomes admin (bootstrap)
-- [x] Auth context provider (session, profile, role)
-- [x] Sign in page
-- [x] Sign up page
-- [x] Protected routes with role-based access
-- [x] Authenticated app shell (sidebar nav + topbar)
-- [x] Role-aware dashboard
-- [x] Navbar links to auth pages
+- [x] Customer type and CustomerInput type defined
+- [x] In-memory customers store hook with localStorage persistence
+- [x] Customer list with search (name, phone, email, address)
+- [x] Add customer modal with form validation
+- [x] Edit customer modal
+- [x] Customer detail drawer (view full info)
+- [x] Delete customer with confirmation prompt
+- [x] Three seed customers pre-loaded
+- [x] Routing wired (replaced placeholder page)
 - [x] Production build passes
 - [x] Typecheck passes
+
+Note: Customer data is stored in browser localStorage (no database) per user request. Data layer is isolated in useCustomers hook for easy migration to Supabase later.
 
 ---
 
@@ -230,26 +229,29 @@ This section is overwritten after every AI session.
 
 Session Date
 
-24 July 2026
+25 July 2026
 
 Work Completed
 
-- Completed Milestone 2 — Authentication & User Roles
-- Set up Supabase client, profiles table with role-based RLS, and auto-create trigger
-- Built AuthContext with session/profile/role management and sign in/up/out
-- Built sign-in and sign-up pages with shared auth layout
-- Built authenticated app shell with role-aware sidebar navigation
-- Built role-aware dashboard with per-role stat cards
-- Added protected routes with role-based access control
-- Updated navbar auth buttons to route to new pages
+- Completed Milestone 3 — Customer Management (UI only, no database per user request)
+- Added Customer and CustomerInput types
+- Built useCustomers hook with localStorage-backed in-memory store and seed data
+- Built CustomersPage with searchable list, add/edit modal, detail drawer, and delete confirmation
+- Wired routing to replace placeholder page
 - Production build and typecheck pass cleanly
+
+Files Created
+
+- src/hooks/useCustomers.ts
+- src/components/customers/CustomerFormModal.tsx
+- src/components/customers/CustomerDetailDrawer.tsx
+- src/pages/CustomersPage.tsx
 
 Files Modified
 
-- src/lib/supabase.ts, src/types/index.ts, src/hooks/useAuth.tsx
-- src/components/AuthLayout.tsx, AppLayout.tsx, ProtectedRoute.tsx
-- src/pages/SignInPage.tsx, SignUpPage.tsx, DashboardPage.tsx, PlaceholderPage.tsx
-- src/App.tsx, src/components/Navbar.tsx
+- src/types/index.ts (added Customer + CustomerInput types)
+- src/App.tsx (import real CustomersPage, removed placeholder import)
+- src/pages/PlaceholderPage.tsx (removed CustomersPage export)
 - PROJECT_STATUS.md
 
 Current Blocker
@@ -258,7 +260,7 @@ None
 
 Recommended Next Step
 
-Start Milestone 3 — Customer Management.
+Start Milestone 4 — Work Orders.
 
 ---
 
@@ -345,7 +347,7 @@ Latest Version
 
 Latest Milestone Completed
 
-Milestone 2 — Authentication & User Roles
+Milestone 3 — Customer Management
 
 ---
 
@@ -359,18 +361,19 @@ Completed Work
 - PROJECT_STATUS.md
 - Milestone 1 — Marketing Website (complete)
 - Milestone 2 — Authentication & User Roles (complete)
+- Milestone 3 — Customer Management (complete, UI only — no database yet)
 
 Current Milestone
 
-Customer Management
+Work Orders
 
 Current Task
 
-Start Milestone 3 — set up customer management.
+Start Milestone 4 — set up work orders.
 
 Next Milestone
 
-Work Orders
+Scheduling & Dispatch
 
 Current Priorities
 
@@ -458,11 +461,11 @@ YES
 
 Reason Stopped
 
-Milestone 2 completed, awaiting approval to proceed to Milestone 3.
+Milestone 3 completed, awaiting approval to proceed to Milestone 4.
 
 Last Finished Task
 
-Milestone 2 — Authentication & User Roles fully built, typechecked, and production build verified.
+Milestone 3 — Customer Management UI fully built, typechecked, and production build verified.
 
 Current Working File
 
@@ -470,11 +473,11 @@ PROJECT_STATUS.md
 
 Next Recommended Action
 
-Start Milestone 3 — Customer Management.
+Start Milestone 4 — Work Orders.
 
 Estimated Remaining Work
 
-6 milestones remaining.
+5 milestones remaining.
 
 ---
 
