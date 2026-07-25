@@ -11,10 +11,6 @@ export function PlaceholderPage({ title, description }: { title: string; descrip
   );
 }
 
-export function SchedulingPage() {
-  return <PlaceholderPage title="Scheduling & Dispatch" description="Scheduling will be built in Milestone 5." />;
-}
-
 export function ReportsPage() {
   return <PlaceholderPage title="Reports & Analytics" description="Reporting will be built in Milestone 8." />;
 }

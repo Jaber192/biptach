@@ -70,6 +70,19 @@ export type WorkOrderInput = Omit<
   | "signatureStorageId"
 >;
 
+export interface Technician {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  color: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type TechnicianInput = Omit<Technician, "id" | "created_at" | "updated_at">;
+
 export interface AuthContextValue {
   session: import("@supabase/supabase-js").Session | null;
   profile: Profile | null;
