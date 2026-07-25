@@ -13,8 +13,8 @@ import { SignInPage } from "./pages/SignInPage";
 import { SignUpPage } from "./pages/SignUpPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CustomersPage } from "./pages/CustomersPage";
+import { WorkOrdersPage } from "./pages/WorkOrdersPage";
 import {
-  WorkOrdersPage,
   SchedulingPage,
   ReportsPage,
   SettingsPage,

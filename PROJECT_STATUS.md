@@ -4,7 +4,7 @@ Version: 0.0.1
 
 Project Status: Active Development
 
-Last Updated: 24 July 2026
+Last Updated: 25 July 2026
 
 Repository Branch: main
 
@@ -28,7 +28,7 @@ Every AI MUST update this file before ending its work session.
 
 Overall Completion
 
-31%
+38%
 
 Current Release
 
@@ -47,7 +47,7 @@ MVP Development
 | 1. Marketing Website | ✅ Completed | 100% |
 | 2. Authentication & User Roles | ✅ Completed | 100% |
 | 3. Customer Management | ✅ Completed | 100% |
-| 4. Work Orders | ⚪ Not Started | 0% |
+| 4. Work Orders | ✅ Completed | 100% |
 | 5. Scheduling & Dispatch | ⚪ Not Started | 0% |
 | 6. Technician Mobile | ⚪ Not Started | 0% |
 | 7. Notifications | ⚪ Not Started | 0% |
@@ -59,7 +59,7 @@ MVP Development
 
 Current Milestone
 
-Milestone 4 — Work Orders
+Milestone 5 — Scheduling & Dispatch
 
 Status
 
@@ -67,11 +67,11 @@ Status
 
 Current Task
 
-Milestone 3 completed. Milestone 4 not started.
+Milestone 4 completed. Milestone 5 not started.
 
 Next Task
 
-Set up work orders — list, create, edit, and view work orders with customer linkage.
+Set up scheduling & dispatch — calendar view, drag-and-drop assignment, technician availability.
 
 Estimated Completion
 
@@ -81,21 +81,22 @@ Unknown
 
 # Current Milestone Checklist
 
-## Customer Management
+## Work Orders
 
-- [x] Customer type and CustomerInput type defined
-- [x] In-memory customers store hook with localStorage persistence
-- [x] Customer list with search (name, phone, email, address)
-- [x] Add customer modal with form validation
-- [x] Edit customer modal
-- [x] Customer detail drawer (view full info)
-- [x] Delete customer with confirmation prompt
-- [x] Three seed customers pre-loaded
+- [x] WorkOrder, WorkOrderInput, and related types defined (status, priority, jobType)
+- [x] useWorkOrders hook with localStorage persistence and seed data
+- [x] Work order list with search (title, description, customer) and status filter
+- [x] Create work order modal with customer linkage dropdown
+- [x] Edit work order modal
+- [x] Work order detail drawer (view full info + linked customer)
+- [x] Delete work order with confirmation prompt
+- [x] Four seed work orders pre-loaded (linked to seed customers)
+- [x] Shared status/priority badge helpers (workOrderDisplay util)
 - [x] Routing wired (replaced placeholder page)
 - [x] Production build passes
 - [x] Typecheck passes
 
-Note: Customer data is stored in browser localStorage (no database) per user request. Data layer is isolated in useCustomers hook for easy migration to Supabase later.
+Note: Work order data is stored in browser localStorage (no database) per user request. Data layer is isolated in useWorkOrders hook for easy migration to Supabase later.
 
 ---
 
@@ -152,6 +153,53 @@ Files Created
 Files Modified
 
 - PROJECT_STATUS.md
+
+Known Issues
+
+None
+
+## Milestone 4 — Work Orders
+
+Completed On
+
+2026-07-25
+
+Summary
+
+- WorkOrder, WorkOrderInput, WorkOrderStatus, WorkOrderPriority, and WorkOrderJobType types defined
+- useWorkOrders hook with localStorage-backed in-memory store and four seed work orders
+- WorkOrdersPage with searchable list, status filter pills, and delete confirmation
+- WorkOrderFormModal for create/edit with title, description, customer dropdown, scheduled date, job type, priority, and status
+- WorkOrderDetailDrawer showing status/priority badges, description, linked customer details, scheduled time, clock in/out, time on job, tech notes, photos, and signature placeholder
+- Shared workOrderDisplay util for consistent status/priority badge styling across list and drawer
+- Customer linkage: work orders reference customers by id; drawer resolves and shows customer name, contact, address, and notes
+- Routing wired to real WorkOrdersPage; placeholder export removed
+- Production build and typecheck pass cleanly
+
+Important Notes
+
+- Work order data is stored in browser localStorage (no database) per user request. Data layer is isolated in useWorkOrders hook for easy migration to Supabase later.
+- Photos and signature capture are scaffolded as fields (empty arrays / null) — actual capture is planned for Milestone 6 (Technician Mobile).
+- Clock in/out and tech notes fields exist on the model and display in the drawer; editing them is planned for Milestone 6.
+
+Files Created
+
+- src/hooks/useWorkOrders.ts
+- src/components/workorders/WorkOrderFormModal.tsx
+- src/components/workorders/WorkOrderDetailDrawer.tsx
+- src/pages/WorkOrdersPage.tsx
+- src/utils/workOrderDisplay.ts
+
+Files Modified
+
+- src/types/index.ts (added WorkOrder + WorkOrderInput + status/priority/jobType types)
+- src/App.tsx (import real WorkOrdersPage, removed placeholder import)
+- src/pages/PlaceholderPage.tsx (removed WorkOrdersPage export)
+- PROJECT_STATUS.md
+
+Database Migrations
+
+None (data layer is localStorage-backed per user request; Supabase migration deferred to end of project)
 
 Known Issues
 
@@ -233,25 +281,29 @@ Session Date
 
 Work Completed
 
-- Completed Milestone 3 — Customer Management (UI only, no database per user request)
-- Added Customer and CustomerInput types
-- Built useCustomers hook with localStorage-backed in-memory store and seed data
-- Built CustomersPage with searchable list, add/edit modal, detail drawer, and delete confirmation
+- Completed Milestone 4 — Work Orders (UI only, no database per user request)
+- Added WorkOrder, WorkOrderInput, and status/priority/jobType types
+- Built useWorkOrders hook with localStorage-backed in-memory store and four seed work orders
+- Built WorkOrdersPage with searchable list, status filter pills, detail drawer, and delete confirmation
+- Built WorkOrderFormModal (create/edit) with customer linkage dropdown
+- Built WorkOrderDetailDrawer showing full work order info + linked customer
+- Added shared workOrderDisplay util for consistent badge styling
 - Wired routing to replace placeholder page
 - Production build and typecheck pass cleanly
 
 Files Created
 
-- src/hooks/useCustomers.ts
-- src/components/customers/CustomerFormModal.tsx
-- src/components/customers/CustomerDetailDrawer.tsx
-- src/pages/CustomersPage.tsx
+- src/hooks/useWorkOrders.ts
+- src/components/workorders/WorkOrderFormModal.tsx
+- src/components/workorders/WorkOrderDetailDrawer.tsx
+- src/pages/WorkOrdersPage.tsx
+- src/utils/workOrderDisplay.ts
 
 Files Modified
 
-- src/types/index.ts (added Customer + CustomerInput types)
-- src/App.tsx (import real CustomersPage, removed placeholder import)
-- src/pages/PlaceholderPage.tsx (removed CustomersPage export)
+- src/types/index.ts (added WorkOrder + WorkOrderInput + status/priority/jobType types)
+- src/App.tsx (import real WorkOrdersPage, removed placeholder import)
+- src/pages/PlaceholderPage.tsx (removed WorkOrdersPage export)
 - PROJECT_STATUS.md
 
 Current Blocker
@@ -260,7 +312,7 @@ None
 
 Recommended Next Step
 
-Start Milestone 4 — Work Orders.
+Start Milestone 5 — Scheduling & Dispatch.
 
 ---
 
@@ -347,7 +399,7 @@ Latest Version
 
 Latest Milestone Completed
 
-Milestone 3 — Customer Management
+Milestone 4 — Work Orders
 
 ---
 
@@ -362,18 +414,19 @@ Completed Work
 - Milestone 1 — Marketing Website (complete)
 - Milestone 2 — Authentication & User Roles (complete)
 - Milestone 3 — Customer Management (complete, UI only — no database yet)
+- Milestone 4 — Work Orders (complete, UI only — no database yet)
 
 Current Milestone
 
-Work Orders
+Scheduling & Dispatch
 
 Current Task
 
-Start Milestone 4 — set up work orders.
+Start Milestone 5 — set up scheduling & dispatch.
 
 Next Milestone
 
-Scheduling & Dispatch
+Technician Mobile
 
 Current Priorities
 
@@ -461,11 +514,11 @@ YES
 
 Reason Stopped
 
-Milestone 3 completed, awaiting approval to proceed to Milestone 4.
+Milestone 4 completed, awaiting approval to proceed to Milestone 5.
 
 Last Finished Task
 
-Milestone 3 — Customer Management UI fully built, typechecked, and production build verified.
+Milestone 4 — Work Orders UI fully built, typechecked, and production build verified.
 
 Current Working File
 
@@ -473,11 +526,11 @@ PROJECT_STATUS.md
 
 Next Recommended Action
 
-Start Milestone 4 — Work Orders.
+Start Milestone 5 — Scheduling & Dispatch.
 
 Estimated Remaining Work
 
-5 milestones remaining.
+4 milestones remaining.
 
 ---
 
@@ -505,7 +558,7 @@ Unknown
 
 Last Verified
 
-24 July 2026
+25 July 2026
 
 ---
 
