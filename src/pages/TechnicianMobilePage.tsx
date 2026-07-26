@@ -1,17 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ClipboardList,
-  Clock,
-  Camera,
-  PenLine,
-  StickyNote,
-  CheckCircle2,
-  MapPin,
-  User,
-  CalendarClock,
-  X,
-  Loader2,
-} from "lucide-react";
+import { ClipboardList, Clock, Camera, PenLine, StickyNote, CircleCheck as CheckCircle2, MapPin, User, CalendarClock, X, Loader as Loader2 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useWorkOrders } from "../hooks/useWorkOrders";
 import { useCustomers } from "../hooks/useCustomers";
