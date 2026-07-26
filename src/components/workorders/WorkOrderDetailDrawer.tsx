@@ -11,7 +11,9 @@ import {
   Camera,
   PenLine,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { Customer, WorkOrder } from "../../types";
+import { getSignedUrls } from "../../lib/storage";
 import {
   PRIORITY_BADGE_CLASSES,
   PRIORITY_LABELS,
@@ -64,6 +66,33 @@ export function WorkOrderDetailDrawer({
   onEdit,
   onDelete,
 }: WorkOrderDetailDrawerProps) {
+  const [photoUrls, setPhotoUrls] = useState<Map<string, string>>(new Map());
+  const [sigUrl, setSigUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!workOrder || workOrder.photos.length === 0) {
+      setPhotoUrls(new Map());
+      return;
+    }
+    let cancelled = false;
+    getSignedUrls(workOrder.photos).then((m) => {
+      if (!cancelled) setPhotoUrls(m);
+    });
+    return () => { cancelled = true; };
+  }, [workOrder]);
+
+  useEffect(() => {
+    if (!workOrder?.signatureStorageId) {
+      setSigUrl(null);
+      return;
+    }
+    let cancelled = false;
+    getSignedUrls([workOrder.signatureStorageId]).then((m) => {
+      if (!cancelled) setSigUrl(m.get(workOrder.signatureStorageId!) ?? null);
+    });
+    return () => { cancelled = true; };
+  }, [workOrder]);
+
   if (!workOrder) return null;
 
   const fullAddress = customer
@@ -158,7 +187,9 @@ export function WorkOrderDetailDrawer({
                     key={i}
                     className="aspect-square rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
                   >
-                    <img src={p} alt={`Job photo ${i + 1}`} className="h-full w-full rounded-lg object-cover" />
+                    {photoUrls.get(p) ? (
+                      <img src={photoUrls.get(p)!} alt={`Job photo ${i + 1}`} className="h-full w-full rounded-lg object-cover" />
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -173,7 +204,13 @@ export function WorkOrderDetailDrawer({
               Signature
             </div>
             {workOrder.signatureStorageId ? (
-              <p className="mt-1.5 text-sm text-slate-700 dark:text-slate-200">Signature captured</p>
+              sigUrl ? (
+                <div className="mt-1.5 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-700">
+                  <img src={sigUrl} alt="Customer signature" className="h-20 w-full object-contain" />
+                </div>
+              ) : (
+                <p className="mt-1.5 text-sm text-slate-700 dark:text-slate-200">Signature captured</p>
+              )
             ) : (
               <p className="mt-1.5 text-sm italic text-slate-400 dark:text-slate-500">No signature captured</p>
             )}
