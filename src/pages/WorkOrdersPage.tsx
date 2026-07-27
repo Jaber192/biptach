@@ -72,9 +72,9 @@ export function WorkOrdersPage() {
     setFormOpen(true);
   }
 
-  function handleSubmit(input: WorkOrderInput) {
+  async function handleSubmit(input: WorkOrderInput) {
     if (editing) {
-      updateWorkOrder(editing.id, input);
+      await updateWorkOrder(editing.id, input);
       if (input.assignedTo && input.assignedTo !== editing.assignedTo) {
         push({
           type: "job_assigned",
@@ -85,22 +85,24 @@ export function WorkOrdersPage() {
         });
       }
     } else {
-      const wo = addWorkOrder(input);
-      push({
-        type: "job_created",
-        title: "Work order created",
-        message: `"${input.title}" was created${input.assignedTo ? " and assigned" : ""}.`,
-        workOrderId: wo.id,
-        recipientRole: "manager",
-      });
-      if (input.assignedTo) {
+      const wo = await addWorkOrder(input);
+      if (wo) {
         push({
-          type: "job_assigned",
-          title: "New job assigned",
-          message: `"${input.title}" has been assigned to you.`,
+          type: "job_created",
+          title: "Work order created",
+          message: `"${input.title}" was created${input.assignedTo ? " and assigned" : ""}.`,
           workOrderId: wo.id,
-          recipientRole: "technician",
+          recipientRole: "manager",
         });
+        if (input.assignedTo) {
+          push({
+            type: "job_assigned",
+            title: "New job assigned",
+            message: `"${input.title}" has been assigned to you.`,
+            workOrderId: wo.id,
+            recipientRole: "technician",
+          });
+        }
       }
     }
     setFormOpen(false);

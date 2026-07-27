@@ -1,107 +1,119 @@
 import { useCallback, useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 import type { Customer, CustomerInput } from "../types";
 
-const STORAGE_KEY = "biptach.customers";
+type CustomerRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
-const SEED_CUSTOMERS: Customer[] = [
-  {
-    id: "seed-1",
-    name: "Greenfield Apartments",
-    email: "manager@greenfield-apt.com",
-    phone: "(512) 555-0142",
-    address: "1820 Oak Ridge Dr",
-    city: "Austin",
-    state: "TX",
-    zip: "78704",
-    notes: "Rooftop units serviced quarterly. Ask for Maria at the leasing office.",
-    created_at: "2026-07-10T14:20:00.000Z",
-    updated_at: "2026-07-10T14:20:00.000Z",
-  },
-  {
-    id: "seed-2",
-    name: "Sunrise Family Dental",
-    email: "frontdesk@sunrisedental.com",
-    phone: "(512) 555-0188",
-    address: "4521 Lamar Blvd, Ste 200",
-    city: "Austin",
-    state: "TX",
-    zip: "78751",
-    notes: "Sensitive to noise — schedule service before 8am or after 5pm.",
-    created_at: "2026-07-12T09:05:00.000Z",
-    updated_at: "2026-07-12T09:05:00.000Z",
-  },
-  {
-    id: "seed-3",
-    name: "Hector Ramirez",
-    email: "hramirez@example.com",
-    phone: "(512) 555-0233",
-    address: "309 Cedar Park Ln",
-    city: "Cedar Park",
-    state: "TX",
-    zip: "78613",
-    notes: "Residential. Two AC units, one needs a capacitor replacement.",
-    created_at: "2026-07-15T11:42:00.000Z",
-    updated_at: "2026-07-15T11:42:00.000Z",
-  },
-];
-
-function loadFromStorage(): Customer[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return SEED_CUSTOMERS;
-    const parsed = JSON.parse(raw) as Customer[];
-    if (!Array.isArray(parsed)) return SEED_CUSTOMERS;
-    return parsed;
-  } catch {
-    return SEED_CUSTOMERS;
-  }
+function rowToCustomer(row: CustomerRow): Customer {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    phone: row.phone,
+    address: row.address,
+    city: row.city,
+    state: row.state,
+    zip: row.zip,
+    notes: row.notes,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
 }
 
-function saveToStorage(customers: Customer[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(customers));
-  } catch {
-    // ignore write errors (e.g. private mode)
-  }
-}
-
-function makeId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `c-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+function inputToRow(input: CustomerInput): Omit<CustomerRow, "id" | "user_id" | "created_at" | "updated_at"> {
+  return {
+    name: input.name,
+    email: input.email,
+    phone: input.phone,
+    address: input.address,
+    city: input.city,
+    state: input.state,
+    zip: input.zip,
+    notes: input.notes,
+  };
 }
 
 export function useCustomers() {
-  const [customers, setCustomers] = useState<Customer[]>(() => loadFromStorage());
-  const [loading] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    saveToStorage(customers);
-  }, [customers]);
+    let cancelled = false;
 
-  const addCustomer = useCallback((input: CustomerInput) => {
-    const now = new Date().toISOString();
-    const customer: Customer = {
-      ...input,
-      id: makeId(),
-      created_at: now,
-      updated_at: now,
+    async function load() {
+      const { data, error } = await supabase
+        .from("customers")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (!cancelled) {
+        if (error) {
+          console.error("Failed to load customers:", error.message);
+        }
+        setCustomers((data as CustomerRow[] | null)?.map(rowToCustomer) ?? []);
+        setLoading(false);
+      }
+    }
+
+    load();
+
+    const channel = supabase
+      .channel("customers-changes")
+      .on("postgres_changes", { event: "*", schema: "public", table: "customers" }, (payload) => {
+        if (payload.eventType === "INSERT" && payload.new) {
+          setCustomers((prev) => [rowToCustomer(payload.new as CustomerRow), ...prev]);
+        } else if (payload.eventType === "UPDATE" && payload.new) {
+          const updated = rowToCustomer(payload.new as CustomerRow);
+          setCustomers((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+        } else if (payload.eventType === "DELETE" && payload.old) {
+          setCustomers((prev) => prev.filter((c) => c.id !== (payload.old as CustomerRow).id));
+        }
+      })
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
     };
-    setCustomers((prev) => [customer, ...prev]);
-    return customer;
   }, []);
 
-  const updateCustomer = useCallback((id: string, input: CustomerInput) => {
-    setCustomers((prev) =>
-      prev.map((c) =>
-        c.id === id ? { ...c, ...input, updated_at: new Date().toISOString() } : c,
-      ),
-    );
+  const addCustomer = useCallback(async (input: CustomerInput) => {
+    const { data, error } = await supabase
+      .from("customers")
+      .insert(inputToRow(input))
+      .select("*")
+      .single();
+    if (error) {
+      console.error("Failed to add customer:", error.message);
+      return null;
+    }
+    return rowToCustomer(data as CustomerRow);
   }, []);
 
-  const deleteCustomer = useCallback((id: string) => {
-    setCustomers((prev) => prev.filter((c) => c.id !== id));
+  const updateCustomer = useCallback(async (id: string, input: CustomerInput) => {
+    const { error } = await supabase
+      .from("customers")
+      .update(inputToRow(input))
+      .eq("id", id);
+    if (error) console.error("Failed to update customer:", error.message);
+  }, []);
+
+  const deleteCustomer = useCallback(async (id: string) => {
+    const { error } = await supabase.from("customers").delete().eq("id", id);
+    if (error) console.error("Failed to delete customer:", error.message);
   }, []);
 
   const getCustomer = useCallback(

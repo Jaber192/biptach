@@ -36,19 +36,20 @@ export function CustomersPage() {
     setFormOpen(true);
   }
 
-  function handleSubmit(input: CustomerInput) {
+  async function handleSubmit(input: CustomerInput) {
     if (editing) {
-      updateCustomer(editing.id, input);
+      await updateCustomer(editing.id, input);
     } else {
-      const c = addCustomer(input);
-      push({
-        type: "customer_created",
-        title: "Customer added",
-        message: `"${input.name}" was added to your customers.`,
-        workOrderId: null,
-        recipientRole: "manager",
-      });
-      void c;
+      const c = await addCustomer(input);
+      if (c) {
+        push({
+          type: "customer_created",
+          title: "Customer added",
+          message: `"${input.name}" was added to your customers.`,
+          workOrderId: null,
+          recipientRole: "manager",
+        });
+      }
     }
     setFormOpen(false);
     setEditing(null);
