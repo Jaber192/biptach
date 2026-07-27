@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, ClipboardList, CalendarClock, ChartBar as BarChart3, Settings, LogOut, Menu, X, Moon, Sun, Wind } from "lucide-react";
+import { LayoutDashboard, Users, ClipboardList, CalendarClock, ChartBar as BarChart3, Settings, LogOut, Menu, X, Moon, Sun, Wind, Smartphone } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
 import type { UserRole } from "../types";
@@ -17,6 +17,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, roles: ["admin", "manager", "technician"] },
   { label: "Customers", to: "/customers", icon: Users, roles: ["admin", "manager"] },
   { label: "Work Orders", to: "/work-orders", icon: ClipboardList, roles: ["admin", "manager", "technician"] },
+  { label: "My Jobs", to: "/my-jobs", icon: Smartphone, roles: ["technician"] },
   { label: "Scheduling", to: "/scheduling", icon: CalendarClock, roles: ["admin", "manager"] },
   { label: "Reports", to: "/reports", icon: BarChart3, roles: ["admin", "manager"] },
   { label: "Settings", to: "/settings", icon: Settings, roles: ["admin"] },

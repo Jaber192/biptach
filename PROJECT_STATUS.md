@@ -28,7 +28,7 @@ Every AI MUST update this file before ending its work session.
 
 Overall Completion
 
-44%
+50%
 
 Current Release
 
@@ -49,7 +49,7 @@ MVP Development
 | 3. Customer Management | ✅ Completed | 100% |
 | 4. Work Orders | ✅ Completed | 100% |
 | 5. Scheduling & Dispatch | ✅ Completed | 100% |
-| 6. Technician Mobile | ⚪ Not Started | 0% |
+| 6. Technician Mobile | ✅ Completed | 100% |
 | 7. Notifications | ⚪ Not Started | 0% |
 | 8. Reporting & Analytics | ⚪ Not Started | 0% |
 
@@ -59,7 +59,7 @@ MVP Development
 
 Current Milestone
 
-Milestone 6 — Technician Mobile
+Milestone 7 — Notifications
 
 Status
 
@@ -67,11 +67,11 @@ Status
 
 Current Task
 
-Milestone 5 completed. Milestone 6 not started.
+Milestone 6 completed. Milestone 7 not started.
 
 Next Task
 
-Set up technician mobile — field view of assigned jobs, start/complete jobs, photo upload, signature capture, technician notes.
+Set up notifications — in-app and email/SMS alerts for job assignments, status changes, and completions.
 
 Estimated Completion
 
@@ -81,22 +81,21 @@ Unknown
 
 # Current Milestone Checklist
 
-## Work Orders
+## Technician Mobile
 
-- [x] WorkOrder, WorkOrderInput, and related types defined (status, priority, jobType)
-- [x] useWorkOrders hook with localStorage persistence and seed data
-- [x] Work order list with search (title, description, customer) and status filter
-- [x] Create work order modal with customer linkage dropdown
-- [x] Edit work order modal
-- [x] Work order detail drawer (view full info + linked customer)
-- [x] Delete work order with confirmation prompt
-- [x] Four seed work orders pre-loaded (linked to seed customers)
-- [x] Shared status/priority badge helpers (workOrderDisplay util)
-- [x] Routing wired (replaced placeholder page)
+- [x] patchWorkOrder method added to useWorkOrders for partial field updates
+- [x] SignaturePad canvas component (pointer-based drawing, save/clear, data URL)
+- [x] PhotoUpload component (file input with camera capture, base64 thumbnails, remove)
+- [x] JobDetailSheet bottom-sheet drawer with start/complete, clock in/out, notes, photos, signature
+- [x] TechnicianMobilePage with mobile-first assigned jobs list and status filters
+- [x] Seed work orders assigned to seed technicians
+- [x] Technician dashboard shows live stats and link to My Jobs
+- [x] "My Jobs" nav item added to sidebar for technician role
+- [x] Routing wired (/my-jobs, all roles)
 - [x] Production build passes
 - [x] Typecheck passes
 
-Note: Work order data is stored in browser localStorage (no database) per user request. Data layer is isolated in useWorkOrders hook for easy migration to Supabase later.
+Note: Signature and photo data are stored as base64 data URLs in localStorage alongside the work order (no database / file storage yet). Offline-first sync is planned for a future milestone.
 
 ---
 
@@ -153,6 +152,53 @@ Files Created
 Files Modified
 
 - PROJECT_STATUS.md
+
+Known Issues
+
+None
+
+## Milestone 6 — Technician Mobile
+
+Completed On
+
+2026-07-27
+
+Summary
+
+- patchWorkOrder method added to useWorkOrders hook for partial field updates (status, clock in/out, notes, photos, signature)
+- SignaturePad canvas component with pointer-based drawing, save/clear, and PNG data URL output
+- PhotoUpload component with file input (camera capture), base64 thumbnails, and remove
+- JobDetailSheet bottom-sheet drawer: start job, clock in/out, complete job, technician notes, photos, signature
+- TechnicianMobilePage with mobile-first assigned jobs list, status filters (active/scheduled/completed/all), and search
+- Seed work orders now assigned to seed technicians
+- Technician dashboard now shows live stats (active jobs, scheduled today, completed, hours logged) and a link to My Jobs
+- "My Jobs" nav item added to sidebar for technician role
+- Routing wired to /my-jobs (all roles)
+- Production build and typecheck pass cleanly
+
+Important Notes
+
+- Signature and photo data are stored as base64 data URLs in localStorage alongside the work order (no database / file storage yet).
+- Offline-first sync is planned for a future milestone; the data layer remains isolated in hooks for easy migration to Supabase.
+
+Files Created
+
+- src/components/technician/SignaturePad.tsx
+- src/components/technician/PhotoUpload.tsx
+- src/components/technician/JobDetailSheet.tsx
+- src/pages/TechnicianMobilePage.tsx
+
+Files Modified
+
+- src/hooks/useWorkOrders.ts (added patchWorkOrder + WorkOrderPatch; assigned seed work orders to seed technicians)
+- src/pages/DashboardPage.tsx (live stats per role, My Jobs link for technicians)
+- src/components/AppLayout.tsx (added My Jobs nav item for technician role)
+- src/App.tsx (added /my-jobs route)
+- PROJECT_STATUS.md
+
+Database Migrations
+
+None (data layer is localStorage-backed per user request; Supabase migration deferred to end of project)
 
 Known Issues
 
@@ -338,29 +384,35 @@ This section is overwritten after every AI session.
 
 Session Date
 
-25 July 2026
+27 July 2026
 
 Work Completed
 
-- Completed Milestone 5 — Scheduling & Dispatch (UI only, no database per user request)
-- Added Technician and TechnicianInput types
-- Built useTechnicians hook with localStorage-backed in-memory store and three seed technicians
-- Built SchedulingPage with week-view calendar board, week navigation, and technician legend
-- Technician assignment modal — dispatch any work order to a technician or unassign
-- Unscheduled work orders list with quick-assign buttons
-- Wired routing to replace placeholder page
+- Completed Milestone 6 — Technician Mobile (UI only, no database per user request)
+- Added patchWorkOrder method to useWorkOrders for partial field updates
+- Built SignaturePad canvas component for customer signature capture
+- Built PhotoUpload component with camera capture and thumbnails
+- Built JobDetailSheet bottom-sheet drawer with start/complete, clock in/out, notes, photos, signature
+- Built TechnicianMobilePage with mobile-first assigned jobs list and status filters
+- Assigned seed work orders to seed technicians
+- Technician dashboard now shows live stats and a link to My Jobs
+- Added My Jobs nav item for technician role
+- Wired /my-jobs route
 - Production build and typecheck pass cleanly
 
 Files Created
 
-- src/hooks/useTechnicians.ts
-- src/pages/SchedulingPage.tsx
+- src/components/technician/SignaturePad.tsx
+- src/components/technician/PhotoUpload.tsx
+- src/components/technician/JobDetailSheet.tsx
+- src/pages/TechnicianMobilePage.tsx
 
 Files Modified
 
-- src/types/index.ts (added Technician + TechnicianInput types)
-- src/App.tsx (import real SchedulingPage, removed placeholder import)
-- src/pages/PlaceholderPage.tsx (removed SchedulingPage export)
+- src/hooks/useWorkOrders.ts
+- src/pages/DashboardPage.tsx
+- src/components/AppLayout.tsx
+- src/App.tsx
 - PROJECT_STATUS.md
 
 Current Blocker
@@ -369,7 +421,7 @@ None
 
 Recommended Next Step
 
-Start Milestone 6 — Technician Mobile.
+Start Milestone 7 — Notifications.
 
 ---
 
@@ -456,7 +508,7 @@ Latest Version
 
 Latest Milestone Completed
 
-Milestone 5 — Scheduling & Dispatch
+Milestone 6 — Technician Mobile
 
 ---
 
@@ -473,18 +525,19 @@ Completed Work
 - Milestone 3 — Customer Management (complete, UI only — no database yet)
 - Milestone 4 — Work Orders (complete, UI only — no database yet)
 - Milestone 5 — Scheduling & Dispatch (complete, UI only — no database yet)
+- Milestone 6 — Technician Mobile (complete, UI only — no database yet)
 
 Current Milestone
 
-Technician Mobile
+Notifications
 
 Current Task
 
-Start Milestone 6 — set up technician mobile.
+Start Milestone 7 — set up notifications.
 
 Next Milestone
 
-Notifications
+Reporting & Analytics
 
 Current Priorities
 
@@ -572,11 +625,11 @@ YES
 
 Reason Stopped
 
-Milestone 5 completed, awaiting approval to proceed to Milestone 6.
+Milestone 6 completed, awaiting approval to proceed to Milestone 7.
 
 Last Finished Task
 
-Milestone 5 — Scheduling & Dispatch UI fully built, typechecked, and production build verified.
+Milestone 6 — Technician Mobile UI fully built, typechecked, and production build verified.
 
 Current Working File
 
@@ -584,11 +637,11 @@ PROJECT_STATUS.md
 
 Next Recommended Action
 
-Start Milestone 6 — Technician Mobile.
+Start Milestone 7 — Notifications.
 
 Estimated Remaining Work
 
-3 milestones remaining.
+2 milestones remaining.
 
 ---
 

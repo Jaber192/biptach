@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
 import type { WorkOrder, WorkOrderInput } from "../types";
 
+export type WorkOrderPatch = Partial<
+  Pick<
+    WorkOrder,
+    | "status"
+    | "clockInTime"
+    | "clockOutTime"
+    | "techNotes"
+    | "photos"
+    | "signatureStorageId"
+  >
+>;
+
 const STORAGE_KEY = "biptach.work-orders";
 
 const SEED_WORK_ORDERS: WorkOrder[] = [
@@ -12,7 +24,7 @@ const SEED_WORK_ORDERS: WorkOrder[] = [
     priority: "high",
     status: "in_progress",
     customerId: "seed-3",
-    assignedTo: null,
+    assignedTo: "seed-tech-1",
     createdBy: null,
     scheduledDate: "2026-07-25T09:00:00.000Z",
     clockInTime: "2026-07-25T09:12:00.000Z",
@@ -31,7 +43,7 @@ const SEED_WORK_ORDERS: WorkOrder[] = [
     priority: "medium",
     status: "scheduled",
     customerId: null,
-    assignedTo: null,
+    assignedTo: "seed-tech-2",
     createdBy: null,
     scheduledDate: "2026-07-26T08:00:00.000Z",
     clockInTime: null,
@@ -50,7 +62,7 @@ const SEED_WORK_ORDERS: WorkOrder[] = [
     priority: "low",
     status: "pending",
     customerId: "seed-1",
-    assignedTo: null,
+    assignedTo: "seed-tech-1",
     createdBy: null,
     scheduledDate: "2026-07-28T07:30:00.000Z",
     clockInTime: null,
@@ -69,7 +81,7 @@ const SEED_WORK_ORDERS: WorkOrder[] = [
     priority: "urgent",
     status: "completed",
     customerId: "seed-2",
-    assignedTo: null,
+    assignedTo: "seed-tech-3",
     createdBy: null,
     scheduledDate: "2026-07-23T17:30:00.000Z",
     clockInTime: "2026-07-23T17:45:00.000Z",
@@ -142,6 +154,14 @@ export function useWorkOrders() {
     );
   }, []);
 
+  const patchWorkOrder = useCallback((id: string, patch: WorkOrderPatch) => {
+    setWorkOrders((prev) =>
+      prev.map((w) =>
+        w.id === id ? { ...w, ...patch, updated_at: new Date().toISOString() } : w,
+      ),
+    );
+  }, []);
+
   const deleteWorkOrder = useCallback((id: string) => {
     setWorkOrders((prev) => prev.filter((w) => w.id !== id));
   }, []);
@@ -156,6 +176,7 @@ export function useWorkOrders() {
     loading,
     addWorkOrder,
     updateWorkOrder,
+    patchWorkOrder,
     deleteWorkOrder,
     getWorkOrder,
   };
