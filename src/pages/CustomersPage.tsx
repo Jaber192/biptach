@@ -1,12 +1,14 @@
 import { useMemo, useState } from "react";
 import { Plus, Search, Users, Pencil, Trash2, Mail, Phone, MapPin } from "lucide-react";
 import { useCustomers } from "../hooks/useCustomers";
+import { useNotifications } from "../hooks/useNotifications";
 import type { Customer, CustomerInput } from "../types";
 import { CustomerFormModal } from "../components/customers/CustomerFormModal";
 import { CustomerDetailDrawer } from "../components/customers/CustomerDetailDrawer";
 
 export function CustomersPage() {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers();
+  const { push } = useNotifications();
   const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -38,7 +40,15 @@ export function CustomersPage() {
     if (editing) {
       updateCustomer(editing.id, input);
     } else {
-      addCustomer(input);
+      const c = addCustomer(input);
+      push({
+        type: "customer_created",
+        title: "Customer added",
+        message: `"${input.name}" was added to your customers.`,
+        workOrderId: null,
+        recipientRole: "manager",
+      });
+      void c;
     }
     setFormOpen(false);
     setEditing(null);

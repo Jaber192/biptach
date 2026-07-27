@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Users, ClipboardList, CalendarClock, ChartBar as BarChart3, Settings, LogOut, Menu, X, Moon, Sun, Wind, Smartphone } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
+import { NotificationBell } from "./NotificationBell";
 import type { UserRole } from "../types";
 import type { ReactNode } from "react";
 
@@ -19,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Work Orders", to: "/work-orders", icon: ClipboardList, roles: ["admin", "manager", "technician"] },
   { label: "My Jobs", to: "/my-jobs", icon: Smartphone, roles: ["technician"] },
   { label: "Scheduling", to: "/scheduling", icon: CalendarClock, roles: ["admin", "manager"] },
+  { label: "Notifications", to: "/notifications", icon: BarChart3, roles: ["admin", "manager", "technician"] },
   { label: "Reports", to: "/reports", icon: BarChart3, roles: ["admin", "manager"] },
   { label: "Settings", to: "/settings", icon: Settings, roles: ["admin"] },
 ];
@@ -93,6 +95,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <span className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Biptach</span>
         </div>
         <div className="flex items-center gap-2">
+          <NotificationBell />
           <button
             onClick={toggleTheme}
             aria-label="Toggle theme"
@@ -141,7 +144,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <header className="fixed inset-y-0 right-0 top-0 z-30 hidden h-16 w-[calc(100%-16rem)] items-center justify-end border-b border-slate-200 bg-white/80 px-6 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 lg:flex">
+      <header className="fixed inset-y-0 right-0 top-0 z-30 hidden h-16 w-[calc(100%-16rem)] items-center justify-end gap-2 border-b border-slate-200 bg-white/80 px-6 backdrop-blur dark:border-slate-800 dark:bg-slate-900/80 lg:flex">
+        <NotificationBell />
         <button
           onClick={toggleTheme}
           aria-label="Toggle theme"

@@ -8,6 +8,7 @@ import {
   Inbox,
 } from "lucide-react";
 import { useWorkOrders } from "../hooks/useWorkOrders";
+import { useNotifications } from "../hooks/useNotifications";
 import { useCustomers } from "../hooks/useCustomers";
 import { useTechnicians } from "../hooks/useTechnicians";
 import type { WorkOrder } from "../types";
@@ -56,6 +57,7 @@ function getHour(iso: string | null): number | null {
 
 export function SchedulingPage() {
   const { workOrders, updateWorkOrder } = useWorkOrders();
+  const { push } = useNotifications();
   const { getCustomer } = useCustomers();
   const { technicians, getTechnician } = useTechnicians();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
@@ -129,6 +131,15 @@ export function SchedulingPage() {
       createdBy: assigning.createdBy,
       scheduledDate: assigning.scheduledDate,
     });
+    if (technicianId && technicianId !== assigning.assignedTo) {
+      push({
+        type: "job_assigned",
+        title: "New job assigned",
+        message: `"${assigning.title}" has been assigned to you.`,
+        workOrderId: assigning.id,
+        recipientRole: "technician",
+      });
+    }
     setAssigning(null);
   }
 

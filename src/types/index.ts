@@ -83,6 +83,31 @@ export interface Technician {
 
 export type TechnicianInput = Omit<Technician, "id" | "created_at" | "updated_at">;
 
+export type NotificationType =
+  | "job_assigned"
+  | "job_started"
+  | "job_completed"
+  | "job_cancelled"
+  | "job_created"
+  | "job_scheduled"
+  | "job_clocked_in"
+  | "job_clocked_out"
+  | "customer_created"
+  | "system";
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  workOrderId: string | null;
+  recipientRole: UserRole;
+  read: boolean;
+  created_at: string;
+}
+
+export type NotificationInput = Omit<AppNotification, "id" | "read" | "created_at">;
+
 export interface AuthContextValue {
   session: import("@supabase/supabase-js").Session | null;
   profile: Profile | null;

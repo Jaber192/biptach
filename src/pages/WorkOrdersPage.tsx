@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useWorkOrders } from "../hooks/useWorkOrders";
 import { useCustomers } from "../hooks/useCustomers";
+import { useNotifications } from "../hooks/useNotifications";
 import type { WorkOrder, WorkOrderInput, WorkOrderStatus } from "../types";
 import { WorkOrderFormModal } from "../components/workorders/WorkOrderFormModal";
 import { WorkOrderDetailDrawer } from "../components/workorders/WorkOrderDetailDrawer";
@@ -40,6 +41,7 @@ function formatScheduled(iso: string | null): string {
 export function WorkOrdersPage() {
   const { workOrders, addWorkOrder, updateWorkOrder, deleteWorkOrder } = useWorkOrders();
   const { customers, getCustomer } = useCustomers();
+  const { push } = useNotifications();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | "all">("all");
   const [formOpen, setFormOpen] = useState(false);
@@ -73,8 +75,33 @@ export function WorkOrdersPage() {
   function handleSubmit(input: WorkOrderInput) {
     if (editing) {
       updateWorkOrder(editing.id, input);
+      if (input.assignedTo && input.assignedTo !== editing.assignedTo) {
+        push({
+          type: "job_assigned",
+          title: "Job reassigned",
+          message: `"${input.title}" has been assigned to you.`,
+          workOrderId: editing.id,
+          recipientRole: "technician",
+        });
+      }
     } else {
-      addWorkOrder(input);
+      const wo = addWorkOrder(input);
+      push({
+        type: "job_created",
+        title: "Work order created",
+        message: `"${input.title}" was created${input.assignedTo ? " and assigned" : ""}.`,
+        workOrderId: wo.id,
+        recipientRole: "manager",
+      });
+      if (input.assignedTo) {
+        push({
+          type: "job_assigned",
+          title: "New job assigned",
+          message: `"${input.title}" has been assigned to you.`,
+          workOrderId: wo.id,
+          recipientRole: "technician",
+        });
+      }
     }
     setFormOpen(false);
     setEditing(null);

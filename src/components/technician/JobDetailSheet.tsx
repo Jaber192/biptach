@@ -22,6 +22,7 @@ import {
 } from "../../utils/workOrderDisplay";
 import { PhotoUpload } from "./PhotoUpload";
 import { SignaturePad } from "./SignaturePad";
+import { useNotifications } from "../../hooks/useNotifications";
 
 interface JobDetailSheetProps {
   workOrder: WorkOrder | null;
@@ -60,6 +61,7 @@ function elapsed(startIso: string | null, endIso: string | null): string {
 export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDetailSheetProps) {
   const [notes, setNotes] = useState(workOrder?.techNotes ?? "");
   const [saving, setSaving] = useState<string | null>(null);
+  const { push } = useNotifications();
 
   if (!workOrder) return null;
 
@@ -81,14 +83,35 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
   function handleStart() {
     const now = new Date().toISOString();
     patch({ status: "in_progress" as WorkOrderStatus, clockInTime: workOrder!.clockInTime ?? now }, "Starting");
+    push({
+      type: "job_started",
+      title: "Job started",
+      message: `"${workOrder!.title}" was started.`,
+      workOrderId: workOrder!.id,
+      recipientRole: "manager",
+    });
   }
 
   function handleClockIn() {
     patch({ clockInTime: new Date().toISOString() }, "Clocking in");
+    push({
+      type: "job_clocked_in",
+      title: "Clocked in",
+      message: `Clocked in on "${workOrder!.title}".`,
+      workOrderId: workOrder!.id,
+      recipientRole: "technician",
+    });
   }
 
   function handleClockOut() {
     patch({ clockOutTime: new Date().toISOString() }, "Clocking out");
+    push({
+      type: "job_clocked_out",
+      title: "Clocked out",
+      message: `Clocked out on "${workOrder!.title}".`,
+      workOrderId: workOrder!.id,
+      recipientRole: "technician",
+    });
   }
 
   function handleComplete() {
@@ -100,6 +123,13 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
       },
       "Completing",
     );
+    push({
+      type: "job_completed",
+      title: "Job completed",
+      message: `"${workOrder!.title}" was completed.`,
+      workOrderId: workOrder!.id,
+      recipientRole: "manager",
+    });
   }
 
   function saveNotes() {

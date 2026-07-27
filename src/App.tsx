@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
+import { NotificationsProvider } from "./hooks/useNotifications";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import { Navbar } from "./components/Navbar";
@@ -16,6 +17,7 @@ import { CustomersPage } from "./pages/CustomersPage";
 import { WorkOrdersPage } from "./pages/WorkOrdersPage";
 import { SchedulingPage } from "./pages/SchedulingPage";
 import { TechnicianMobilePage } from "./pages/TechnicianMobilePage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import {
   ReportsPage,
   SettingsPage,
@@ -41,6 +43,7 @@ function MarketingSite() {
 export default function App() {
   return (
     <AuthProvider>
+      <NotificationsProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<MarketingSite />} />
@@ -97,6 +100,16 @@ export default function App() {
             }
           />
           <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <NotificationsPage />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/reports"
             element={
               <ProtectedRoute roles={["admin", "manager"]}>
@@ -119,6 +132,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
+      </NotificationsProvider>
     </AuthProvider>
   );
 }
