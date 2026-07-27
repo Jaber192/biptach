@@ -25,25 +25,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth
-      .getSession()
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Failed to load session:", error.message);
-          setLoading(false);
-          return;
-        }
-        setSession(data.session);
-        if (data.session?.user) {
-          loadProfile(data.session.user.id).finally(() => setLoading(false));
-        } else {
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        console.error("Session check failed:", err);
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      if (data.session?.user) {
+        loadProfile(data.session.user.id).finally(() => setLoading(false));
+      } else {
         setLoading(false);
-      });
+      }
+    });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);

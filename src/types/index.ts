@@ -77,7 +77,6 @@ export interface Technician {
   email: string | null;
   color: string;
   is_active: boolean;
-  user_id: string | null;
   created_at: string;
   updated_at: string;
 }

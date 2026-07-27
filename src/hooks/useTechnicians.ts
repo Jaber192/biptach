@@ -1,114 +1,106 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
 import type { Technician, TechnicianInput } from "../types";
 
-type TechnicianRow = {
-  id: string;
-  name: string;
-  phone: string | null;
-  email: string | null;
-  color: string;
-  is_active: boolean;
-  user_id: string | null;
-  created_at: string;
-  updated_at: string;
-};
+const STORAGE_KEY = "biptach.technicians";
 
-function rowToTechnician(row: TechnicianRow): Technician {
-  return {
-    id: row.id,
-    name: row.name,
-    phone: row.phone,
-    email: row.email,
-    color: row.color,
-    is_active: row.is_active,
-    user_id: row.user_id,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  };
+const TECHNICIAN_COLORS = [
+  "#0ea5e9", // sky
+  "#10b981", // emerald
+  "#f59e0b", // amber
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#14b8a6", // teal
+];
+
+const SEED_TECHNICIANS: Technician[] = [
+  {
+    id: "seed-tech-1",
+    name: "Marcus Bell",
+    phone: "(512) 555-0310",
+    email: "marcus@biptach.example",
+    color: TECHNICIAN_COLORS[0],
+    is_active: true,
+    created_at: "2026-07-01T08:00:00.000Z",
+    updated_at: "2026-07-01T08:00:00.000Z",
+  },
+  {
+    id: "seed-tech-2",
+    name: "Priya Shah",
+    phone: "(512) 555-0311",
+    email: "priya@biptach.example",
+    color: TECHNICIAN_COLORS[1],
+    is_active: true,
+    created_at: "2026-07-01T08:00:00.000Z",
+    updated_at: "2026-07-01T08:00:00.000Z",
+  },
+  {
+    id: "seed-tech-3",
+    name: "Diego Santos",
+    phone: "(512) 555-0312",
+    email: "diego@biptach.example",
+    color: TECHNICIAN_COLORS[2],
+    is_active: true,
+    created_at: "2026-07-01T08:00:00.000Z",
+    updated_at: "2026-07-01T08:00:00.000Z",
+  },
+];
+
+function loadFromStorage(): Technician[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return SEED_TECHNICIANS;
+    const parsed = JSON.parse(raw) as Technician[];
+    if (!Array.isArray(parsed)) return SEED_TECHNICIANS;
+    return parsed;
+  } catch {
+    return SEED_TECHNICIANS;
+  }
 }
 
-function inputToRow(input: TechnicianInput): Omit<TechnicianRow, "id" | "created_at" | "updated_at"> {
-  return {
-    name: input.name,
-    phone: input.phone,
-    email: input.email,
-    color: input.color,
-    is_active: input.is_active,
-    user_id: input.user_id,
-  };
+function saveToStorage(technicians: Technician[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(technicians));
+  } catch {
+    // ignore write errors
+  }
+}
+
+function makeId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `tech-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export function useTechnicians() {
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchTechnicians = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const { data, error } = await supabase
-      .from("technicians")
-      .select("*")
-      .order("created_at", { ascending: true });
-
-    if (error) {
-      setError(error.message);
-      setTechnicians([]);
-    } else {
-      setTechnicians((data as TechnicianRow[]).map(rowToTechnician));
-    }
-    setLoading(false);
-  }, []);
+  const [technicians, setTechnicians] = useState<Technician[]>(() => loadFromStorage());
+  const [loading] = useState(false);
 
   useEffect(() => {
-    fetchTechnicians();
-  }, [fetchTechnicians]);
+    saveToStorage(technicians);
+  }, [technicians]);
 
-  const addTechnician = useCallback(
-    async (input: TechnicianInput): Promise<Technician | null> => {
-      const { data, error } = await supabase
-        .from("technicians")
-        .insert(inputToRow(input))
-        .select()
-        .single();
+  const addTechnician = useCallback((input: TechnicianInput) => {
+    const now = new Date().toISOString();
+    const technician: Technician = {
+      ...input,
+      id: makeId(),
+      created_at: now,
+      updated_at: now,
+    };
+    setTechnicians((prev) => [...prev, technician]);
+    return technician;
+  }, []);
 
-      if (error) {
-        setError(error.message);
-        return null;
-      }
-      const technician = rowToTechnician(data as TechnicianRow);
-      setTechnicians((prev) => [...prev, technician]);
-      return technician;
-    },
-    [],
-  );
+  const updateTechnician = useCallback((id: string, input: TechnicianInput) => {
+    setTechnicians((prev) =>
+      prev.map((t) =>
+        t.id === id ? { ...t, ...input, updated_at: new Date().toISOString() } : t,
+      ),
+    );
+  }, []);
 
-  const updateTechnician = useCallback(
-    async (id: string, input: TechnicianInput): Promise<void> => {
-      const { data, error } = await supabase
-        .from("technicians")
-        .update(inputToRow(input))
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) {
-        setError(error.message);
-        return;
-      }
-      const updated = rowToTechnician(data as TechnicianRow);
-      setTechnicians((prev) => prev.map((t) => (t.id === id ? updated : t)));
-    },
-    [],
-  );
-
-  const deleteTechnician = useCallback(async (id: string): Promise<void> => {
-    const { error } = await supabase.from("technicians").delete().eq("id", id);
-    if (error) {
-      setError(error.message);
-      return;
-    }
+  const deleteTechnician = useCallback((id: string) => {
     setTechnicians((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
@@ -117,14 +109,14 @@ export function useTechnicians() {
     [technicians],
   );
 
-  return { technicians, loading, error, addTechnician, updateTechnician, deleteTechnician, getTechnician, refresh: fetchTechnicians };
+  return {
+    technicians,
+    loading,
+    addTechnician,
+    updateTechnician,
+    deleteTechnician,
+    getTechnician,
+  };
 }
 
-export const TECHNICIAN_COLORS = [
-  "#0ea5e9",
-  "#10b981",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ec4899",
-  "#14b8a6",
-];
+export { TECHNICIAN_COLORS };

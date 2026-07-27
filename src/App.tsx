@@ -15,7 +15,6 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { CustomersPage } from "./pages/CustomersPage";
 import { WorkOrdersPage } from "./pages/WorkOrdersPage";
 import { SchedulingPage } from "./pages/SchedulingPage";
-import { TechnicianMobilePage } from "./pages/TechnicianMobilePage";
 import {
   ReportsPage,
   SettingsPage,
@@ -82,16 +81,6 @@ export default function App() {
               <ProtectedRoute roles={["admin", "manager"]}>
                 <AppLayout>
                   <SchedulingPage />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/my-jobs"
-            element={
-              <ProtectedRoute roles={["technician"]}>
-                <AppLayout>
-                  <TechnicianMobilePage />
                 </AppLayout>
               </ProtectedRoute>
             }
