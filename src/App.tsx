@@ -18,11 +18,8 @@ import { WorkOrdersPage } from "./pages/WorkOrdersPage";
 import { SchedulingPage } from "./pages/SchedulingPage";
 import { TechnicianMobilePage } from "./pages/TechnicianMobilePage";
 import { NotificationsPage } from "./pages/NotificationsPage";
-import {
-  ReportsPage,
-  SettingsPage,
-  NotFoundPage,
-} from "./pages/PlaceholderPage";
+import { ReportsPage } from "./pages/ReportsPage";
+import { SettingsPage, NotFoundPage } from "./pages/PlaceholderPage";
 
 function MarketingSite() {
   return (
