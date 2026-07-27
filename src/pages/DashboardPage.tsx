@@ -133,8 +133,9 @@ export function DashboardPage() {
       <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{welcome.title}</h2>
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          This is your {role} dashboard. Customer management, work orders, scheduling, and reporting
-          modules will appear here as they are built.
+          {role === "technician"
+            ? "View your assigned jobs, update status, and document work from the My Jobs page."
+            : "Track work orders, scheduling, and team activity in real time. Use the sidebar to navigate."}
         </p>
       </div>
     </div>
