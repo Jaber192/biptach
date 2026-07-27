@@ -176,7 +176,7 @@ Summary
 
 Important Notes
 
-- All analytics are computed client-side from the existing localStorage-backed hooks (no database queries).
+- All analytics are computed client-side from the Supabase-backed hooks (no separate analytics queries; data comes from the realtime work_orders/customers/technicians subscriptions).
 - Revenue reporting is not included (no billing data in MVP); planned for a future milestone with Stripe integration.
 
 Files Created
@@ -206,7 +206,7 @@ Completed On
 Summary
 
 - AppNotification, NotificationInput, and NotificationType types added
-- useNotifications hook + NotificationsProvider with localStorage persistence and three seed notifications
+- useNotifications hook + NotificationsProvider backed by Supabase notifications table with realtime updates
 - NotificationBell component: header bell with unread count badge and a dropdown panel showing recent notifications with mark-read and delete actions
 - NotificationsPage with All / Unread filters, mark read, mark all read, delete, and clear all
 - Bell wired into both desktop and mobile app headers
@@ -218,7 +218,7 @@ Summary
 
 Important Notes
 
-- Notifications are in-app only (no email/SMS delivery yet). Data is stored in browser localStorage alongside other app data.
+- Notifications are in-app only (no email/SMS delivery yet). Data is stored in the Supabase notifications table and synced via realtime subscriptions.
 - Email/SMS delivery is planned for a future milestone once a provider is selected.
 
 Files Created
@@ -240,7 +240,7 @@ Files Modified
 
 Database Migrations
 
-None (data layer is localStorage-backed per user request; Supabase migration deferred to end of project)
+Supabase tables: customers, technicians, work_orders, notifications (all with RLS, owner-scoped via user_id)
 
 Known Issues
 
@@ -267,8 +267,8 @@ Summary
 
 Important Notes
 
-- Signature and photo data are stored as base64 data URLs in localStorage alongside the work order (no database / file storage yet).
-- Offline-first sync is planned for a future milestone; the data layer remains isolated in hooks for easy migration to Supabase.
+- Signature and photo data are stored as base64 data URLs in the Supabase work_orders table (photos[] and signature_storage_id columns). No Supabase Storage buckets are used yet; data URLs are stored inline.
+- Offline-first sync is planned for a future milestone.
 
 Files Created
 
@@ -287,7 +287,7 @@ Files Modified
 
 Database Migrations
 
-None (data layer is localStorage-backed per user request; Supabase migration deferred to end of project)
+Supabase tables: customers, technicians, work_orders, notifications (all with RLS, owner-scoped via user_id)
 
 Known Issues
 
@@ -307,7 +307,7 @@ None
 - [x] Production build passes
 - [x] Typecheck passes
 
-Note: Technician data is stored in browser localStorage (no database) per user request. Data layer is isolated in useTechnicians hook for easy migration to Supabase later.
+Note: Technician data is stored in the Supabase technicians table with realtime updates via the useTechnicians hook.
 
 ## Milestone 5 — Scheduling & Dispatch
 
@@ -318,7 +318,7 @@ Completed On
 Summary
 
 - Technician and TechnicianInput types defined
-- useTechnicians hook with localStorage-backed in-memory store and three seed technicians
+- useTechnicians hook backed by Supabase technicians table with realtime updates
 - SchedulingPage with week-view calendar board (7 day columns)
 - Scheduled work orders render as cards on their scheduled day, sorted by time
 - Week navigation: previous / next / today, with formatted date range header
@@ -331,7 +331,7 @@ Summary
 
 Important Notes
 
-- Technician data is stored in browser localStorage (no database) per user request. Data layer is isolated in useTechnicians hook for easy migration to Supabase later.
+- Technician data is stored in the Supabase technicians table with realtime updates via the useTechnicians hook.
 - Drag-and-drop rescheduling is not implemented (kept simple per spec philosophy); jobs are scheduled via the Work Orders form's date picker and dispatched from this board.
 
 Files Created
@@ -348,7 +348,7 @@ Files Modified
 
 Database Migrations
 
-None (data layer is localStorage-backed per user request; Supabase migration deferred to end of project)
+Supabase tables: customers, technicians, work_orders, notifications (all with RLS, owner-scoped via user_id)
 
 Known Issues
 
@@ -363,7 +363,7 @@ Completed On
 Summary
 
 - WorkOrder, WorkOrderInput, WorkOrderStatus, WorkOrderPriority, and WorkOrderJobType types defined
-- useWorkOrders hook with localStorage-backed in-memory store and four seed work orders
+- useWorkOrders hook backed by Supabase work_orders table with realtime updates
 - WorkOrdersPage with searchable list, status filter pills, and delete confirmation
 - WorkOrderFormModal for create/edit with title, description, customer dropdown, scheduled date, job type, priority, and status
 - WorkOrderDetailDrawer showing status/priority badges, description, linked customer details, scheduled time, clock in/out, time on job, tech notes, photos, and signature placeholder
@@ -374,7 +374,7 @@ Summary
 
 Important Notes
 
-- Work order data is stored in browser localStorage (no database) per user request. Data layer is isolated in useWorkOrders hook for easy migration to Supabase later.
+- Work order data is stored in the Supabase work_orders table with realtime updates via the useWorkOrders hook.
 - Photos and signature capture are scaffolded as fields (empty arrays / null) — actual capture is planned for Milestone 6 (Technician Mobile).
 - Clock in/out and tech notes fields exist on the model and display in the drawer; editing them is planned for Milestone 6.
 
@@ -395,7 +395,7 @@ Files Modified
 
 Database Migrations
 
-None (data layer is localStorage-backed per user request; Supabase migration deferred to end of project)
+Supabase tables: customers, technicians, work_orders, notifications (all with RLS, owner-scoped via user_id)
 
 Known Issues
 
@@ -473,25 +473,21 @@ This section is overwritten after every AI session.
 
 Session Date
 
-27 July 2026 (session 3)
+27 July 2026 (session 4)
 
 Work Completed
 
-- Completed Milestone 8 — Reporting & Analytics (final MVP milestone)
-- Built ReportsPage with KPI cards, date range filter, weekly trend chart, status/job-type/priority breakdowns, top customers, and technician productivity table
-- Wired real ReportsPage into App.tsx; removed placeholder export
-- Production build and typecheck pass cleanly
-- All 8 MVP milestones now complete
-
-Files Created
-
-- src/pages/ReportsPage.tsx
+- Verified full project state against the database and codebase
+- Fixed critical bug: handle_new_user() trigger hardcoded 'manager' role for every signup, so the first user could never become admin (no UI to promote). Updated the trigger to assign 'admin' to the first signup and 'manager' thereafter, matching the MASTER_SPEC requirement.
+- Removed redundant condition in NotificationBell filter (n.recipientRole === role || n.recipientRole === role).
+- Corrected PROJECT_STATUS.md: earlier milestone notes incorrectly claimed the data layer was localStorage-backed. The app actually uses Supabase (Postgres + RLS + realtime) for all business data. Updated all misleading localStorage/no-database/deferred-migration statements.
+- Confirmed production build and typecheck pass; all 5 Supabase tables (profiles, customers, technicians, work_orders, notifications) exist with RLS enabled and correct owner-scoped policies.
 
 Files Modified
 
-- src/App.tsx
-- src/pages/PlaceholderPage.tsx
-- PROJECT_STATUS.md
+- supabase migration: fix_first_user_admin_role (handle_new_user updated)
+- src/components/NotificationBell.tsx (redundant filter condition removed)
+- PROJECT_STATUS.md (corrected stale localStorage claims, updated session summary)
 
 Current Blocker
 
@@ -600,12 +596,14 @@ Completed Work
 - PROJECT_STATUS.md
 - Milestone 1 — Marketing Website (complete)
 - Milestone 2 — Authentication & User Roles (complete)
-- Milestone 3 — Customer Management (complete, UI only — no database yet)
-- Milestone 4 — Work Orders (complete, UI only — no database yet)
-- Milestone 5 — Scheduling & Dispatch (complete, UI only — no database yet)
-- Milestone 6 — Technician Mobile (complete, UI only — no database yet)
+- Milestone 3 — Customer Management (complete, Supabase-backed)
+- Milestone 4 — Work Orders (complete, Supabase-backed)
+- Milestone 5 — Scheduling & Dispatch (complete, Supabase-backed)
+- Milestone 6 — Technician Mobile (complete, Supabase-backed)
 - Milestone 7 — Notifications (complete, in-app only — no email/SMS yet)
 - Milestone 8 — Reporting & Analytics (complete)
+
+IMPORTANT CORRECTION (27 July 2026, session 4): Earlier milestone notes below incorrectly state the data layer is "localStorage-backed". This is OUTDATED. The app uses Supabase (Postgres + RLS + realtime) for all business data: customers, technicians, work_orders, and notifications. The hooks (useCustomers, useWorkOrders, useTechnicians, useNotifications) query Supabase directly and subscribe to postgres_changes for realtime updates. Ignore any "localStorage" / "no database yet" / "Supabase migration deferred" statements in the per-milestone notes — they were written before the Supabase migration was applied and were never corrected. The only localStorage usage is the theme toggle (useTheme).
 
 Current Milestone
 
@@ -709,7 +707,7 @@ All 8 MVP milestones complete.
 
 Last Finished Task
 
-Milestone 8 — Reporting & Analytics fully built, typechecked, and production build verified.
+Verification + fixes: corrected first-user admin role bug, cleaned up NotificationBell, and reconciled PROJECT_STATUS.md with the actual Supabase-backed data layer.
 
 Current Working File
 
@@ -749,7 +747,7 @@ Unknown
 
 Last Verified
 
-25 July 2026
+27 July 2026
 
 ---
 

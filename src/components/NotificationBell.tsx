@@ -48,7 +48,7 @@ export function NotificationBell() {
   }, []);
 
   const role = profile?.role ?? "technician";
-  const visible = notifications.filter((n) => n.recipientRole === role || n.recipientRole === role);
+  const visible = notifications.filter((n) => n.recipientRole === role);
   const recent = visible.slice(0, 8);
 
   function handleClick(n: AppNotification) {
