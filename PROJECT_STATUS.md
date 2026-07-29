@@ -45,7 +45,7 @@ MVP Development
 | Milestone | Status | Progress |
 |------------|---------|----------|
 | 1. Marketing Website | ✅ Completed | 100% |
-| 2. Authentication & User Roles | ✅ Completed | 100% |
+| 2. Authentication & User Roles |rebuild  | 0% |
 | 3. Customer Management | ✅ Completed | 100% |
 | 4. Work Orders | ✅ Completed | 100% |
 | 5. Scheduling & Dispatch | ✅ Completed | 100% |
@@ -401,69 +401,395 @@ Known Issues
 
 None
 
-## Milestone 2 — Authentication & User Roles
 
-Completed On
+## Milestone 2 — Company Authentication & Multi-Tenant Foundation
 
-2026-07-24
+### Objective
 
-Summary
+Build the complete authentication, authorization, company management, and multi-tenant foundation of Biptach.
 
-- Supabase integration for authentication and database (replaces Convex per environment availability)
-- Profiles table extending auth.users with name, role, phone, and is_active fields
-- Three user roles: Admin, Manager, Technician with role-based access control
-- Auto-create profile trigger fires on every signup; first user becomes Admin, rest default to Technician
-- Row Level Security: authenticated users can read all profiles; updates restricted to self or admin; deletes admin-only
-- is_admin() security-definer helper used in RLS policies for admin-only actions
-- AuthContext provider manages session, profile, role, and exposes signIn/signUp/signOut
-- onAuthStateChange listener with async-safe pattern to avoid deadlocks
-- Sign in page with email/password, error handling, and redirect to dashboard
-- Sign up page with name/email/password, success state, and auto-redirect
-- Shared AuthLayout component for consistent auth page styling
-- Authenticated app shell with sidebar navigation (desktop) and horizontal scroll nav (mobile)
-- Role-aware sidebar: Admin sees all nav items, Manager sees subset, Technician sees Dashboard + Work Orders
-- Role-aware dashboard with different stat cards and content per role
-- ProtectedRoute component gates access by session and optional role list
-- Placeholder pages for upcoming modules (Customers, Work Orders, Scheduling, Reports, Settings)
-- Navbar "Sign in" and "Start free trial" buttons now route to /signin and /signup
-- React Router v7 for routing
+This milestone is the backbone of the entire application.
 
-Important Notes
+Every future feature (Customers, Work Orders, Scheduling, Reports, Notifications, Billing, etc.) depends on this architecture.
 
-- Backend switched from Convex to Supabase (environment provisioned Supabase; Convex not available)
-- Authentication uses Supabase email/password (no magic links or social providers)
-- Email confirmation stays OFF per project defaults
-- The first account created automatically becomes the Admin — no manual seeding needed
-- Client never inserts/updates role directly; role changes are gated by is_admin() RLS policies
-- Supabase env vars (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) pre-populated in .env
-- Production build and typecheck both pass cleanly
+No future milestone should be built until this milestone is fully completed.
 
-Files Created
+---
 
-- src/lib/supabase.ts
-- src/types/index.ts
-- src/hooks/useAuth.tsx
-- src/components/AuthLayout.tsx
-- src/components/AppLayout.tsx
-- src/components/ProtectedRoute.tsx
-- src/pages/SignInPage.tsx
-- src/pages/SignUpPage.tsx
-- src/pages/DashboardPage.tsx
-- src/pages/PlaceholderPage.tsx
+# Overview
 
-Files Modified
+Biptach is a multi-tenant SaaS.
 
-- src/App.tsx (added routing, AuthProvider, protected routes)
-- src/components/Navbar.tsx (Sign in / Start free trial now Link to /signin and /signup)
-- PROJECT_STATUS.md
+Every HVAC company is an independent workspace.
 
-Database Migrations
+Each company owns its own:
 
-- create_profiles_table: profiles table + is_admin() + handle_new_user trigger + RLS policies
+- Users
+- Customers
+- Work Orders
+- Technicians
+- Notifications
+- Reports
+- Settings
+- Files
+- Subscription
 
-Known Issues
+No company should ever be able to access another company's data.
 
-None
+The Company is the root entity of the system.
+
+Everything belongs to a company.
+
+---
+
+# Authentication
+
+Authentication must use Supabase Authentication.
+
+Supported methods:
+
+- Email
+- Password
+
+Required features:
+
+- Login
+- Logout
+- Forgot Password
+- Reset Password
+- Session Persistence
+
+Email verification should remain configurable.
+
+---
+
+# Registration Flow
+
+There are only TWO ways to register.
+
+## Option 1 — Create Company
+
+This option is for HVAC business owners.
+
+Required information:
+
+- Company Name
+- Full Name
+- Email
+- Password
+
+After successful registration the system automatically creates:
+
+- Company
+- Owner Profile
+- Company Membership
+- Default Company Settings
+- Default Subscription (Trial or Starter)
+
+The Owner is automatically logged in.
+
+The user never selects the Owner role manually.
+
+The system assigns it automatically.
+
+---
+
+## Option 2 — Join Existing Company
+
+This option is for employees.
+
+Employees cannot create companies.
+
+Employees must join an existing company.
+
+Joining should support:
+
+- Invitation Link
+or
+- Company Invitation Code
+
+The invitation determines:
+
+- Company
+- Assigned Role
+
+Employees never choose their own role.
+
+The system assigns the role automatically.
+
+---
+
+# Company Roles
+
+Four roles exist.
+
+## Owner
+
+Highest permission level.
+
+Can:
+
+- Manage company
+- Manage subscription
+- Invite users
+- Remove users
+- Promote users
+- Demote users
+- Manage billing
+- Access every feature
+- Manage company settings
+
+Only one Owner should exist per company unless ownership is transferred.
+
+---
+
+## Manager
+
+Can:
+
+- Manage customers
+- Create work orders
+- Assign technicians
+- View reports
+- Monitor technician progress
+
+Cannot:
+
+- Manage subscription
+- Transfer ownership
+- Delete company
+
+---
+
+## Dispatcher
+
+Can:
+
+- Schedule jobs
+- Dispatch technicians
+- Update work order status
+- View technician availability
+- Manage daily operations
+
+Cannot:
+
+- Manage billing
+- Manage subscription
+- Delete company
+
+---
+
+## Technician
+
+Can:
+
+- View assigned work
+- Start jobs
+- Complete jobs
+- Upload photos
+- Capture signatures
+- Add technician notes
+- Work offline
+- Synchronize data when online
+
+Cannot access management features.
+
+---
+
+# Dashboard Architecture
+
+The application must use ONE dashboard.
+
+Separate dashboards should not exist.
+
+Navigation is generated dynamically based on the authenticated user's role.
+
+Example
+
+Owner
+
+- Everything
+
+Manager
+
+- Management modules
+
+Dispatcher
+
+- Dispatch modules
+
+Technician
+
+- Technician modules
+
+Navigation should never expose unauthorized pages.
+
+---
+
+# Company Membership
+
+Every authenticated user belongs to exactly one company.
+
+Every profile must contain:
+
+- Company
+- Role
+
+Every business object must inherit the company from the authenticated user.
+
+---
+
+# Authorization
+
+Every protected page must verify:
+
+- User is authenticated
+- User belongs to a company
+- User has permission
+
+Unauthorized access must return an error or redirect appropriately.
+
+---
+
+# Multi-Tenant Rules
+
+Every business object belongs to one company.
+
+Examples:
+
+Customer
+
+→ Company
+
+Work Order
+
+→ Company
+
+Notification
+
+→ Company
+
+Technician Location
+
+→ Company
+
+Reports
+
+→ Company
+
+Settings
+
+→ Company
+
+No cross-company access should ever be possible.
+
+---
+
+# Database Foundation
+
+The database architecture should be redesigned around Company ownership.
+
+Core entities include:
+
+- Companies
+- Profiles
+- Company Memberships
+- Invitations
+- Customers
+- Work Orders
+- Notifications
+- Technician Locations
+- Company Settings
+- Subscriptions
+
+The Company must be the root entity.
+
+Do not build a user-centric architecture.
+
+---
+
+# Invitation System
+
+The Owner should be able to invite:
+
+- Managers
+- Dispatchers
+- Technicians
+
+The invitation contains:
+
+- Company
+- Assigned Role
+
+After acceptance the employee automatically joins the company.
+
+---
+
+# Subscription Ownership
+
+Subscriptions belong to companies.
+
+Individual users never purchase subscriptions.
+
+Only the Owner manages:
+
+- Billing
+- Subscription
+- Seats
+- Company Plan
+
+---
+
+# Offline Support
+
+Offline mode is required only for Technicians.
+
+Managers, Dispatchers, and Owners require internet connectivity.
+
+Technicians must be able to:
+
+- View assigned work
+- Start jobs
+- Complete jobs
+- Capture signatures
+- Upload photos
+- Add notes
+
+Changes synchronize automatically when internet returns.
+
+---
+
+# Security
+
+Authentication must be secure.
+
+Authorization must be role-based.
+
+Every database query must enforce company isolation.
+
+Never trust client-side role checks.
+
+Server-side validation is mandatory.
+
+---
+
+# Success Criteria
+
+Milestone 2 is complete only when:
+
+- Company creation works
+- Owner is automatically created
+- Employees can join existing companies
+- Invitation system works
+- Role permissions work correctly
+- Company isolation works correctly
+- Dashboard navigation changes by role
+- Authentication works
+- Session persistence works
+- Unauthorized users cannot access restricted resources
+- Multi-tenant architecture is fully operational
+- The foundation is stable enough for Milestone 3 (Customer Management)
+
 
 ---
 
