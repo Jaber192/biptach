@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Loader as Loader2 } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
 import { useAuth } from "../hooks/useAuth";
+import { supabase } from "../lib/supabase";
 
 export function SignInPage() {
   const { signIn } = useAuth();
@@ -21,6 +22,20 @@ export function SignInPage() {
       setError(error);
       setSubmitting(false);
       return;
+    }
+    // Redirect based on role; technicians go to their mobile job view
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    if (uid) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", uid)
+        .maybeSingle();
+      if (profile?.role === "technician") {
+        navigate("/my-jobs");
+        return;
+      }
     }
     navigate("/dashboard");
   }

@@ -27,7 +27,8 @@ export function ProtectedRoute({
   }
 
   if (roles && profile && !roles.includes(profile.role)) {
-    return <Navigate to="/dashboard" replace />;
+    const home = profile.role === "technician" ? "/my-jobs" : "/dashboard";
+    return <Navigate to={home} replace />;
   }
 
   return <>{children}</>;
