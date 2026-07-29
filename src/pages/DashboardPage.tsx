@@ -47,7 +47,7 @@ function hoursThisWeek(clockIn: string | null, clockOut: string | null): number 
 
 export function DashboardPage() {
   const { profile } = useAuth();
-  const role = profile?.role ?? "technician";
+  const role = profile?.role ?? "manager";
   const welcome = ROLE_WELCOME[role];
   const { workOrders } = useWorkOrders();
   const { customers } = useCustomers();

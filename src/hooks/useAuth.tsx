@@ -9,7 +9,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function loadProfile(uid: string) {
+  async function loadProfile(uid: string): Promise<Profile | null> {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
@@ -19,9 +19,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       console.error("Failed to load profile:", error.message);
       setProfile(null);
-      return;
+      return null;
     }
-    setProfile(data as Profile | null);
+    const p = data as Profile | null;
+    setProfile(p);
+    return p;
   }
 
   useEffect(() => {
@@ -54,12 +56,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(name: string, email: string, password: string) {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name } },
     });
-    return { error: error?.message ?? null };
+    if (error) return { error: error.message };
+    // Wait for the profile row (created by the DB trigger) so the role is known
+    if (data.user) {
+      for (let i = 0; i < 10; i++) {
+        const p = await loadProfile(data.user.id);
+        if (p) break;
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    }
+    return { error: null };
   }
 
   async function signOut() {
