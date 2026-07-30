@@ -61,10 +61,10 @@ export function Pricing() {
             Pricing
           </span>
           <h2 className="mt-3 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
-            Simple pricing that scales with you
+            Stop paying for thousands of features you don&rsquo;t use.
           </h2>
           <p className="mt-4 text-lg text-slate-600 dark:text-slate-300">
-            Start with a 14-day free trial. No credit card required. Cancel anytime.
+            Pay only for what you actually need. Biptach strips out the corporate software bloat to give your trucks on the road exactly what they use every day&mdash;and nothing they don&rsquo;t. No hidden upsells, no contract traps.
           </p>
         </div>
 
