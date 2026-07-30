@@ -15,13 +15,17 @@ interface StatCard {
 }
 
 const ROLE_WELCOME: Record<UserRole, { title: string; description: string }> = {
-  admin: {
-    title: "Admin Dashboard",
+  owner: {
+    title: "Owner Dashboard",
     description: "Manage your team, customers, and operations from one place.",
   },
   manager: {
     title: "Manager Dashboard",
     description: "Monitor work orders, scheduling, and technician activity.",
+  },
+  dispatcher: {
+    title: "Dispatcher Dashboard",
+    description: "Schedule jobs, dispatch technicians, and manage daily operations.",
   },
   technician: {
     title: "Technician Dashboard",

@@ -5,6 +5,7 @@ import type { Customer, CustomerInput } from "../types";
 type CustomerRow = {
   id: string;
   user_id: string;
+  company_id: string;
   name: string;
   email: string | null;
   phone: string | null;
@@ -33,7 +34,7 @@ function rowToCustomer(row: CustomerRow): Customer {
   };
 }
 
-function inputToRow(input: CustomerInput): Omit<CustomerRow, "id" | "user_id" | "created_at" | "updated_at"> {
+function inputToRow(input: CustomerInput): Omit<CustomerRow, "id" | "user_id" | "company_id" | "created_at" | "updated_at"> {
   return {
     name: input.name,
     email: input.email,

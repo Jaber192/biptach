@@ -1,13 +1,34 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
-import type { AuthContextValue, Profile } from "../types";
+import type { AuthContextValue, Company, Profile } from "../types";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthContextValue["session"]>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
+
+  async function loadCompany(companyId: string | null): Promise<Company | null> {
+    if (!companyId) {
+      setCompany(null);
+      return null;
+    }
+    const { data, error } = await supabase
+      .from("companies")
+      .select("*")
+      .eq("id", companyId)
+      .maybeSingle();
+    if (error) {
+      console.error("Failed to load company:", error.message);
+      setCompany(null);
+      return null;
+    }
+    const c = data as Company | null;
+    setCompany(c);
+    return c;
+  }
 
   async function loadProfile(uid: string): Promise<Profile | null> {
     const { data, error } = await supabase
@@ -19,10 +40,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       console.error("Failed to load profile:", error.message);
       setProfile(null);
+      setCompany(null);
       return null;
     }
     const p = data as Profile | null;
     setProfile(p);
+    if (p?.company_id) {
+      await loadCompany(p.company_id);
+    } else {
+      setCompany(null);
+    }
     return p;
   }
 
@@ -43,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await loadProfile(newSession.user.id);
         } else {
           setProfile(null);
+          setCompany(null);
         }
       })();
     });
@@ -55,31 +83,68 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   }
 
-  async function signUp(name: string, email: string, password: string) {
+  async function signUpWithCompany(name: string, email: string, password: string, companyName: string) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name } },
     });
     if (error) return { error: error.message };
-    // Wait for the profile row (created by the DB trigger) so the role is known
-    if (data.user) {
-      for (let i = 0; i < 10; i++) {
-        const p = await loadProfile(data.user.id);
-        if (p) break;
-        await new Promise((r) => setTimeout(r, 200));
-      }
+    if (!data.user) return { error: "Failed to create account" };
+
+    // Wait for the profile row (created by the DB trigger)
+    let p: Profile | null = null;
+    for (let i = 0; i < 10; i++) {
+      const { data: row } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", data.user.id)
+        .maybeSingle();
+      p = row as Profile | null;
+      if (p) break;
+      await new Promise((r) => setTimeout(r, 200));
     }
+    if (!p) return { error: "Profile was not created" };
+
+    // Create the company (RPC sets role=owner + company_id)
+    const { error: rpcError } = await supabase.rpc("create_company", {
+      company_name: companyName,
+    });
+    if (rpcError) return { error: rpcError.message };
+
+    await loadProfile(data.user.id);
     return { error: null };
+  }
+
+  async function acceptInvitation(inviteCode: string) {
+    const { error } = await supabase.rpc("accept_invitation", {
+      invite_code: inviteCode,
+    });
+    if (error) return { error: error.message };
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    if (uid) await loadProfile(uid);
+    return { error: null };
+  }
+
+  async function resetPassword(email: string) {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error: error?.message ?? null };
   }
 
   async function signOut() {
     await supabase.auth.signOut();
     setProfile(null);
+    setCompany(null);
   }
 
   return (
-    <AuthContext.Provider value={{ session, profile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider
+      value={{ session, profile, company, loading, signIn, signUpWithCompany, acceptInvitation, resetPassword, signOut }}
+    >
       {children}
     </AuthContext.Provider>
   );

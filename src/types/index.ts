@@ -1,4 +1,6 @@
-export type UserRole = "admin" | "manager" | "technician";
+export type UserRole = "owner" | "manager" | "dispatcher" | "technician";
+
+export const ALL_ROLES: UserRole[] = ["owner", "manager", "dispatcher", "technician"];
 
 export interface Profile {
   id: string;
@@ -6,8 +8,45 @@ export interface Profile {
   role: UserRole;
   phone: string | null;
   is_active: boolean;
+  company_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CompanyMembership {
+  id: string;
+  company_id: string;
+  user_id: string;
+  role: UserRole;
+  created_at: string;
+  updated_at: string;
+}
+
+export type InvitationRole = "manager" | "dispatcher" | "technician";
+
+export interface Invitation {
+  id: string;
+  company_id: string;
+  email: string;
+  role: InvitationRole;
+  invite_code: string;
+  accepted_by: string | null;
+  accepted_at: string | null;
+  expires_at: string;
+  created_at: string;
+}
+
+export interface InvitationInput {
+  email: string;
+  role: InvitationRole;
 }
 
 export interface Customer {
@@ -111,8 +150,11 @@ export type NotificationInput = Omit<AppNotification, "id" | "read" | "created_a
 export interface AuthContextValue {
   session: import("@supabase/supabase-js").Session | null;
   profile: Profile | null;
+  company: Company | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (name: string, email: string, password: string) => Promise<{ error: string | null }>;
+  signUpWithCompany: (name: string, email: string, password: string, companyName: string) => Promise<{ error: string | null }>;
+  acceptInvitation: (inviteCode: string) => Promise<{ error: string | null }>;
+  resetPassword: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }

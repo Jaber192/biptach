@@ -12,6 +12,7 @@ export type WorkOrderPatch = Partial<
 type WorkOrderRow = {
   id: string;
   user_id: string;
+  company_id: string;
   title: string;
   description: string | null;
   job_type: WorkOrder["jobType"];
@@ -52,7 +53,7 @@ function rowToWorkOrder(row: WorkOrderRow): WorkOrder {
   };
 }
 
-function inputToRow(input: WorkOrderInput): Omit<WorkOrderRow, "id" | "user_id" | "created_at" | "updated_at" | "clock_in_time" | "clock_out_time" | "tech_notes" | "photos" | "signature_storage_id"> {
+function inputToRow(input: WorkOrderInput): Omit<WorkOrderRow, "id" | "user_id" | "company_id" | "created_at" | "updated_at" | "clock_in_time" | "clock_out_time" | "tech_notes" | "photos" | "signature_storage_id"> {
   return {
     title: input.title,
     description: input.description,

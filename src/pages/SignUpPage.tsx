@@ -1,15 +1,23 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Loader as Loader2 } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Loader as Loader2, Building2, UserPlus } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
 import { useAuth } from "../hooks/useAuth";
+import { supabase } from "../lib/supabase";
+
 
 export function SignUpPage() {
-  const { signUp } = useAuth();
+  const { signUpWithCompany, acceptInvitation } = useAuth();
   const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const initialInvite = params.get("invite") ?? "";
+
+  const [mode, setMode] = useState<"company" | "join">(initialInvite ? "join" : "company");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [inviteCode, setInviteCode] = useState(initialInvite);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -17,18 +25,110 @@ export function SignUpPage() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const { error } = await signUp(name, email, password);
-    if (error) {
-      setError(error);
-      setSubmitting(false);
-      return;
+
+    if (mode === "company") {
+      const { error } = await signUpWithCompany(name, email, password, companyName);
+      if (error) {
+        setError(error);
+        setSubmitting(false);
+        return;
+      }
+      navigate("/dashboard");
+    } else {
+      // Join flow: first sign up an auth account, then accept the invitation.
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { name } },
+      });
+      if (signUpError) {
+        setError(signUpError.message);
+        setSubmitting(false);
+        return;
+      }
+      if (!data.user) {
+        setError("Failed to create account");
+        setSubmitting(false);
+        return;
+      }
+      const { error: acceptError } = await acceptInvitation(inviteCode);
+      if (acceptError) {
+        setError(acceptError);
+        setSubmitting(false);
+        return;
+      }
+      navigate("/dashboard");
     }
-    navigate("/dashboard");
   }
 
   return (
-    <AuthLayout title="Create your account" subtitle="Start managing your HVAC business with Biptach.">
+    <AuthLayout
+      title="Create your account"
+      subtitle="Start managing your HVAC business with Biptach."
+    >
+      <div className="mb-6 grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
+        <button
+          type="button"
+          onClick={() => setMode("company")}
+          className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            mode === "company"
+              ? "bg-white text-primary-700 shadow-sm dark:bg-slate-900 dark:text-primary-300"
+              : "text-slate-500 dark:text-slate-400"
+          }`}
+        >
+          <Building2 className="h-4 w-4" />
+          Create Company
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("join")}
+          className={`flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+            mode === "join"
+              ? "bg-white text-primary-700 shadow-sm dark:bg-slate-900 dark:text-primary-300"
+              : "text-slate-500 dark:text-slate-400"
+          }`}
+        >
+          <UserPlus className="h-4 w-4" />
+          Join Company
+        </button>
+      </div>
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {mode === "company" && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Company name
+            </label>
+            <input
+              type="text"
+              required
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              placeholder="Acme HVAC Services"
+            />
+          </div>
+        )}
+
+        {mode === "join" && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Invitation code
+            </label>
+            <input
+              type="text"
+              required
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              placeholder="Paste your invitation code"
+            />
+            <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+              Ask your company owner for an invitation link or code.
+            </p>
+          </div>
+        )}
+
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
             Full name
@@ -82,7 +182,7 @@ export function SignUpPage() {
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow-md disabled:opacity-60"
         >
           {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
-          Create account
+          {mode === "company" ? "Create company" : "Join company"}
         </button>
       </form>
 

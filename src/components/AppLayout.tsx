@@ -15,14 +15,14 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, roles: ["admin", "manager", "technician"] },
-  { label: "Customers", to: "/customers", icon: Users, roles: ["admin", "manager"] },
-  { label: "Work Orders", to: "/work-orders", icon: ClipboardList, roles: ["admin", "manager", "technician"] },
+  { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard, roles: ["owner", "manager", "dispatcher", "technician"] },
+  { label: "Customers", to: "/customers", icon: Users, roles: ["owner", "manager"] },
+  { label: "Work Orders", to: "/work-orders", icon: ClipboardList, roles: ["owner", "manager", "dispatcher", "technician"] },
   { label: "My Jobs", to: "/my-jobs", icon: Smartphone, roles: ["technician"] },
-  { label: "Scheduling", to: "/scheduling", icon: CalendarClock, roles: ["admin", "manager"] },
-  { label: "Notifications", to: "/notifications", icon: BarChart3, roles: ["admin", "manager", "technician"] },
-  { label: "Reports", to: "/reports", icon: BarChart3, roles: ["admin", "manager"] },
-  { label: "Settings", to: "/settings", icon: Settings, roles: ["admin"] },
+  { label: "Scheduling", to: "/scheduling", icon: CalendarClock, roles: ["owner", "manager", "dispatcher"] },
+  { label: "Notifications", to: "/notifications", icon: BarChart3, roles: ["owner", "manager", "dispatcher", "technician"] },
+  { label: "Reports", to: "/reports", icon: BarChart3, roles: ["owner", "manager"] },
+  { label: "Settings", to: "/settings", icon: Settings, roles: ["owner"] },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {

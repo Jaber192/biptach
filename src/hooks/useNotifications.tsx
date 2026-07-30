@@ -5,6 +5,7 @@ import type { AppNotification, NotificationInput, NotificationType, UserRole } f
 type NotificationRow = {
   id: string;
   user_id: string;
+  company_id: string;
   type: NotificationType;
   title: string;
   message: string;

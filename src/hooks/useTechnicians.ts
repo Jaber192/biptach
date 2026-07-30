@@ -5,6 +5,7 @@ import type { Technician, TechnicianInput } from "../types";
 type TechnicianRow = {
   id: string;
   user_id: string;
+  company_id: string;
   name: string;
   phone: string | null;
   email: string | null;
@@ -27,7 +28,7 @@ function rowToTechnician(row: TechnicianRow): Technician {
   };
 }
 
-function inputToRow(input: TechnicianInput): Omit<TechnicianRow, "id" | "user_id" | "created_at" | "updated_at"> {
+function inputToRow(input: TechnicianInput): Omit<TechnicianRow, "id" | "user_id" | "company_id" | "created_at" | "updated_at"> {
   return {
     name: input.name,
     phone: input.phone,

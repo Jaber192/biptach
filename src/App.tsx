@@ -12,6 +12,8 @@ import { CtaBanner } from "./components/CtaBanner";
 import { Footer } from "./components/Footer";
 import { SignInPage } from "./pages/SignInPage";
 import { SignUpPage } from "./pages/SignUpPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CustomersPage } from "./pages/CustomersPage";
 import { WorkOrdersPage } from "./pages/WorkOrdersPage";
@@ -47,6 +49,8 @@ export default function App() {
           <Route path="/" element={<MarketingSite />} />
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route
             path="/dashboard"
             element={
@@ -60,7 +64,7 @@ export default function App() {
           <Route
             path="/customers"
             element={
-              <ProtectedRoute roles={["admin", "manager"]}>
+              <ProtectedRoute roles={["owner", "manager"]}>
                 <AppLayout>
                   <CustomersPage />
                 </AppLayout>
@@ -80,7 +84,7 @@ export default function App() {
           <Route
             path="/scheduling"
             element={
-              <ProtectedRoute roles={["admin", "manager"]}>
+              <ProtectedRoute roles={["owner", "manager", "dispatcher"]}>
                 <AppLayout>
                   <SchedulingPage />
                 </AppLayout>
@@ -110,7 +114,7 @@ export default function App() {
           <Route
             path="/reports"
             element={
-              <ProtectedRoute roles={["admin", "manager"]}>
+              <ProtectedRoute roles={["owner", "manager"]}>
                 <AppLayout>
                   <ReportsPage />
                 </AppLayout>
@@ -120,7 +124,7 @@ export default function App() {
           <Route
             path="/settings"
             element={
-              <ProtectedRoute roles={["admin"]}>
+              <ProtectedRoute roles={["owner"]}>
                 <AppLayout>
                   <SettingsPage />
                 </AppLayout>
