@@ -113,6 +113,12 @@ REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.is_admin() FROM anon;
 REVOKE EXECUTE ON FUNCTION public.is_admin() FROM authenticated;
 REVOKE EXECUTE ON FUNCTION public.is_admin() FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.accept_invitation(invite_code text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.accept_invitation(invite_code text) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION public.accept_invitation(invite_code text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.create_company(company_name text) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.create_company(company_name text) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION public.create_company(company_name text) FROM PUBLIC;
 
 -- ============ CUSTOMERS TABLE ============
 CREATE TABLE IF NOT EXISTS public.customers (
