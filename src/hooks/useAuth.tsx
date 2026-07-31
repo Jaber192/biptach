@@ -4,6 +4,14 @@ import type { AuthContextValue, Company, Profile } from "../types";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function extractEdgeError(data: unknown): string | null {
+  if (data && typeof data === "object" && "error" in data) {
+    const msg = (data as Record<string, unknown>).error;
+    return typeof msg === "string" ? msg : "Operation failed";
+  }
+  return null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthContextValue["session"]>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -106,21 +114,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     if (!p) return { error: "Profile was not created" };
 
-    // Create the company (RPC sets role=owner + company_id)
-    const { error: rpcError } = await supabase.rpc("create_company", {
-      company_name: companyName,
+    // Create the company via edge function (sets role=owner + company_id)
+    const fnResponse = await supabase.functions.invoke("create-company", {
+      body: { company_name: companyName },
     });
-    if (rpcError) return { error: rpcError.message };
+    const fnError = fnResponse.error ?? extractEdgeError(fnResponse.data);
+    if (fnError) return { error: fnError };
 
     await loadProfile(data.user.id);
     return { error: null };
   }
 
   async function acceptInvitation(inviteCode: string) {
-    const { error } = await supabase.rpc("accept_invitation", {
-      invite_code: inviteCode,
+    const fnResponse = await supabase.functions.invoke("accept-invitation", {
+      body: { invite_code: inviteCode },
     });
-    if (error) return { error: error.message };
+    const fnError = fnResponse.error ?? extractEdgeError(fnResponse.data);
+    if (fnError) return { error: fnError };
 
     const { data: sessionData } = await supabase.auth.getSession();
     const uid = sessionData.session?.user?.id;
