@@ -31,7 +31,7 @@ export function ProtectedRoute({
     return <Navigate to={home} replace />;
   }
 
-  if (session && profile && !profile.company_id && !roles?.includes("technician")) {
+  if (session && profile && !profile.company_id) {
     return <Navigate to="/signup" replace />;
   }
 
