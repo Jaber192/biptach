@@ -48,10 +48,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- ============================================================================
 -- 2. HELPER FUNCTIONS
 -- ============================================================================
--- updated_at trigger function
+-- updated_at trigger function (search_path pinned — security hardening)
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS trigger
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
   NEW.updated_at = now();
@@ -59,7 +60,9 @@ BEGIN
 END;
 $$;
 
--- Auto-create profile on signup (defaults to 'technician', no company yet)
+-- Auto-create profile on signup (defaults to 'technician', no company yet).
+-- The first real user becomes the company OWNER via the create-company edge
+-- function, not via this trigger. There is no 'admin' role in this schema.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -79,7 +82,10 @@ BEGIN
 END;
 $$;
 
--- Internal helper: caller's company_id from company_memberships
+-- Internal helper: caller's company_id from company_memberships.
+-- SECURITY DEFINER so it can read company_memberships regardless of the
+-- caller's RLS. MUST be callable by authenticated users because every
+-- company-scoped RLS policy references it.
 CREATE OR REPLACE FUNCTION public.current_company_id()
 RETURNS uuid
 LANGUAGE sql
@@ -90,7 +96,10 @@ AS $$
   SELECT company_id FROM public.company_memberships WHERE user_id = auth.uid();
 $$;
 
--- Internal helper: check if caller has one of the given roles
+-- Internal helper: check if caller has one of the given roles.
+-- SECURITY DEFINER so it can read company_memberships regardless of the
+-- caller's RLS. MUST be callable by authenticated users because owner-scoped
+-- RLS policies reference it.
 CREATE OR REPLACE FUNCTION public.has_role(roles text[])
 RETURNS boolean
 LANGUAGE sql
@@ -104,8 +113,8 @@ AS $$
   );
 $$;
 
--- create_company: creates a company + owner membership for the caller
--- (Called via Edge Function with service role key — NOT callable via REST)
+-- create_company: creates a company + owner membership for the caller.
+-- Called via Edge Function with service role key — NOT callable via REST.
 CREATE OR REPLACE FUNCTION public.create_company(company_name text)
 RETURNS uuid
 LANGUAGE plpgsql
@@ -144,8 +153,8 @@ BEGIN
 END;
 $$;
 
--- accept_invitation: accepts an invite and joins the company
--- (Called via Edge Function with service role key — NOT callable via REST)
+-- accept_invitation: accepts an invite and joins the company.
+-- Called via Edge Function with service role key — NOT callable via REST.
 CREATE OR REPLACE FUNCTION public.accept_invitation(invite_code text)
 RETURNS uuid
 LANGUAGE plpgsql
@@ -453,10 +462,21 @@ CREATE POLICY "select_self_or_company_profiles" ON public.profiles FOR SELECT
     OR company_id = public.current_company_id()
   );
 
+-- Self-update: a user may edit their own name/phone, but CANNOT change their
+-- own role or company_id through this policy. Role/company changes require
+-- the owner-scoped policy below. This prevents privilege escalation
+-- (technician -> owner) and tenant hopping via the Data API.
 CREATE POLICY "update_self_profiles" ON public.profiles FOR UPDATE
   TO authenticated USING (auth.uid() = id)
-  WITH CHECK (auth.uid() = id);
+  WITH CHECK (
+    auth.uid() = id
+    AND role = (SELECT role FROM public.profiles WHERE id = auth.uid())
+    AND company_id = (SELECT company_id FROM public.profiles WHERE id = auth.uid())
+  );
 
+-- Owner-scoped update: the company owner can change any profile in their
+-- company, including role and company_id. This is the ONLY path that can
+-- change role or company_id.
 CREATE POLICY "update_owner_company_profiles" ON public.profiles FOR UPDATE
   TO authenticated USING (public.has_role(ARRAY['owner']) AND company_id = public.current_company_id())
   WITH CHECK (public.has_role(ARRAY['owner']) AND company_id = public.current_company_id());
@@ -661,9 +681,13 @@ CREATE POLICY "delete_company_notifications" ON public.notifications FOR DELETE
 -- ============================================================================
 -- 23. FUNCTION EXECUTE GRANTS (Security Hardening)
 -- ============================================================================
--- Internal helpers: NOT callable via REST by any role
-REVOKE EXECUTE ON FUNCTION public.current_company_id() FROM anon, authenticated, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.has_role(text[]) FROM anon, authenticated, PUBLIC;
+-- RLS helper functions: MUST be callable by authenticated users because
+-- every company-scoped RLS policy references them. Without EXECUTE, all
+-- queries on those tables fail with "permission denied for function".
+GRANT EXECUTE ON FUNCTION public.current_company_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.has_role(text[]) TO authenticated;
+
+-- Trigger function: NOT callable via REST RPC (only fired by the database).
 REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM anon, authenticated, PUBLIC;
 
 -- Company RPC functions: NOT callable via REST by any role.
@@ -677,7 +701,7 @@ REVOKE EXECUTE ON FUNCTION public.accept_invitation(invite_code text) FROM authe
 REVOKE EXECUTE ON FUNCTION public.accept_invitation(invite_code text) FROM anon;
 REVOKE EXECUTE ON FUNCTION public.accept_invitation(invite_code text) FROM PUBLIC;
 
--- Drop the obsolete is_admin() function (replaced by has_role())
+-- Drop the obsolete is_admin() function (replaced by has_role()).
 DROP FUNCTION IF EXISTS public.is_admin();
 
 -- ============================================================================

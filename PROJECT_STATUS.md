@@ -799,29 +799,32 @@ This section is overwritten after every AI session.
 
 Session Date
 
-27 July 2026 (session 4)
+31 July 2026 (session 5)
 
 Work Completed
 
-- Verified full project state against the database and codebase
-- Fixed critical bug: handle_new_user() trigger hardcoded 'manager' role for every signup, so the first user could never become admin (no UI to promote). Updated the trigger to assign 'admin' to the first signup and 'manager' thereafter, matching the MASTER_SPEC requirement.
-- Removed redundant condition in NotificationBell filter (n.recipientRole === role || n.recipientRole === role).
-- Corrected PROJECT_STATUS.md: earlier milestone notes incorrectly claimed the data layer was localStorage-backed. The app actually uses Supabase (Postgres + RLS + realtime) for all business data. Updated all misleading localStorage/no-database/deferred-migration statements.
-- Confirmed production build and typecheck pass; all 5 Supabase tables (profiles, customers, technicians, work_orders, notifications) exist with RLS enabled and correct owner-scoped policies.
+- Security audit of all 14 Supabase migration files + consolidated supabase-setup.sql
+- Found and documented a privilege-escalation / tenant-isolation bug in the profiles self-update RLS policy: the WITH CHECK only constrained the `id` column, so any authenticated user could self-promote their own `role` to 'owner' or change their own `company_id` to hop into another company via the Data API. Fix prepared (migration SQL) that adds guards so role/company_id cannot change through the self-update path — only through the owner-scoped policy.
+- Found and documented stale first-user-admin logic in handle_new_user(): migration 20260727140123 added 'admin' for the first signup, but migration 20260730181502 overwrote it back to always 'technician'. The schema now uses a 4-role set (owner/manager/dispatcher/technician) with no 'admin' role, so the first-user logic is obsolete. Fix prepared that re-asserts a clean 'technician' default; the owner role is granted later by the create-company edge function.
+- Rewrote supabase-setup.sql as a clean, corrected consolidated setup script matching the actual live schema: pinned set_updated_at search_path, corrected self-update policy, correct EXECUTE grants on RLS helper functions (current_company_id/has_role granted to authenticated), removed obsolete is_admin() references, removed stale first-user-admin logic.
+- Confirmed production build and typecheck pass.
 
 Files Modified
 
-- supabase migration: fix_first_user_admin_role (handle_new_user updated)
-- src/components/NotificationBell.tsx (redundant filter condition removed)
-- PROJECT_STATUS.md (corrected stale localStorage claims, updated session summary)
+- supabase-setup.sql (rewritten as clean consolidated setup script with security fixes)
+- PROJECT_STATUS.md (updated session summary)
+
+Database Migrations
+
+- Migration "20260731130000_fix_profile_self_update_escalation" was prepared but could NOT be applied: the Supabase MCP server (apply_migration / execute_sql / get_security_posture) is returning HTML error pages instead of JSON for all calls this session. The migration SQL is ready and must be applied via mcp__supabase__apply_migration once the server is back. The corrected supabase-setup.sql reflects the intended post-fix state.
 
 Current Blocker
 
-None
+The Supabase MCP server is temporarily unavailable (returns HTML instead of JSON for all database operations). The privilege-escalation fix migration is prepared but not yet applied to the live database.
 
 Recommended Next Step
 
-MVP is complete. Future work: email/SMS notifications, offline sync, Stripe payments, QuickBooks, Google Maps, and other features listed in MASTER_SPEC.md Future Features.
+Apply the pending migration "20260731130000_fix_profile_self_update_escalation" via mcp__supabase__apply_migration once the Supabase MCP server is back online. This closes the profiles self-update privilege-escalation bug.
 
 ---
 
