@@ -71,7 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (event === "INITIAL_SESSION") return;
       (async () => {
         setSession(newSession);
         if (newSession?.user) {
@@ -80,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
           setCompany(null);
         }
+        setLoading(false);
       })();
     });
 
@@ -146,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     setProfile(null);
     setCompany(null);
   }

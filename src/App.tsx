@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth";
 import { NotificationsProvider } from "./hooks/useNotifications";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -44,7 +44,7 @@ export default function App() {
   return (
     <AuthProvider>
       <NotificationsProvider>
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           <Route path="/" element={<MarketingSite />} />
           <Route path="/signin" element={<SignInPage />} />
@@ -133,7 +133,7 @@ export default function App() {
           />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
       </NotificationsProvider>
     </AuthProvider>
   );
