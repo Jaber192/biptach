@@ -1,20 +1,26 @@
 import { Logo } from "./Logo";
+import { scrollToSection } from "../utils/scroll";
 
-const FOOTER_LINKS = {
+type FooterLink = {
+  label: string;
+  id?: string;
+};
+
+const FOOTER_LINKS: Record<string, FooterLink[]> = {
   Product: [
-    { label: "Features", href: "#features" },
-    { label: "Pricing", href: "#pricing" },
-    { label: "How it works", href: "#how-it-works" },
+    { label: "Features", id: "features" },
+    { label: "Pricing", id: "pricing" },
+    { label: "How it works", id: "how-it-works" },
   ],
   Company: [
-    { label: "About", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Careers", href: "#" },
+    { label: "About" },
+    { label: "Blog" },
+    { label: "Careers" },
   ],
   Support: [
-    { label: "Help center", href: "#" },
-    { label: "Contact us", href: "#" },
-    { label: "Privacy policy", href: "#" },
+    { label: "Help center" },
+    { label: "Contact us" },
+    { label: "Privacy policy" },
   ],
 };
 
@@ -37,12 +43,13 @@ export function Footer() {
               <ul className="mt-3 space-y-2">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <a
-                      href={link.href}
+                    <button
+                      type="button"
+                      onClick={() => link.id ? scrollToSection(link.id) : scrollToSection("top")}
                       className="text-sm text-slate-500 transition-colors hover:text-primary-600 dark:text-slate-400 dark:hover:text-primary-400"
                     >
                       {link.label}
-                    </a>
+                    </button>
                   </li>
                 ))}
               </ul>

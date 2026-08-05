@@ -1,7 +1,10 @@
 import { motion } from "motion/react";
+import { useNavigate } from "react-router-dom";
 import { ArrowRight, CircleCheck as CheckCircle2, Clock, MapPin, Wrench } from "lucide-react";
+import { scrollToSection } from "../utils/scroll";
 
 export function Hero() {
+  const navigate = useNavigate();
   return (
     <section id="top" className="relative overflow-hidden pt-28 pb-20 sm:pt-32 lg:pt-40 lg:pb-28">
       {/* background accents */}
@@ -49,19 +52,21 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.15 }}
             className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
           >
-            <a
-              href="#pricing"
+            <button
+              type="button"
+              onClick={() => navigate("/signup")}
               className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-600 px-6 py-3.5 text-base font-semibold text-white shadow-lg shadow-primary-600/20 transition-all hover:bg-primary-700 hover:shadow-xl hover:shadow-primary-600/30 sm:w-auto"
             >
               Start 14-day free trial
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
-            <a
-              href="#how-it-works"
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollToSection("how-it-works")}
               className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-6 py-3.5 text-base font-semibold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto"
             >
               See how it works
-            </a>
+            </button>
           </motion.div>
 
           <motion.p

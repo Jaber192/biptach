@@ -3,11 +3,12 @@ import { Link } from "react-router-dom";
 import { Menu, X, Moon, Sun } from "lucide-react";
 import { Logo } from "./Logo";
 import { useTheme } from "../hooks/useTheme";
+import { scrollToSection } from "../utils/scroll";
 
 const NAV_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "How it works", href: "#how-it-works" },
-  { label: "Pricing", href: "#pricing" },
+  { label: "Features", id: "features" },
+  { label: "How it works", id: "how-it-works" },
+  { label: "Pricing", id: "pricing" },
 ];
 
 export function Navbar() {
@@ -31,19 +32,20 @@ export function Navbar() {
       }`}
     >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a href="#top" className="shrink-0">
+        <button type="button" onClick={() => scrollToSection("top")} className="shrink-0">
           <Logo />
-        </a>
+        </button>
 
         <div className="hidden items-center gap-8 md:flex">
           {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
+            <button
+              key={link.id}
+              type="button"
+              onClick={() => scrollToSection(link.id)}
               className="text-sm font-medium text-slate-600 transition-colors hover:text-primary-600 dark:text-slate-300 dark:hover:text-primary-400"
             >
               {link.label}
-            </a>
+            </button>
           ))}
         </div>
 
@@ -91,14 +93,17 @@ export function Navbar() {
         <div className="border-t border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950 md:hidden">
           <div className="flex flex-col gap-1">
             {NAV_LINKS.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              <button
+                key={link.id}
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  scrollToSection(link.id);
+                }}
+                className="rounded-lg px-3 py-2.5 text-left text-base font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 {link.label}
-              </a>
+              </button>
             ))}
             <div className="mt-3 flex flex-col gap-2">
               <Link

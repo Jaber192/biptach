@@ -1,7 +1,10 @@
 import { motion } from "motion/react";
+import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { scrollToSection } from "../utils/scroll";
 
 export function CtaBanner() {
+  const navigate = useNavigate();
   return (
     <section className="py-20 sm:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -27,19 +30,21 @@ export function CtaBanner() {
               Your first 14 days are on us.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <a
-                href="#"
+              <button
+                type="button"
+                onClick={() => navigate("/signup")}
                 className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3.5 text-base font-semibold text-primary-700 shadow-lg transition-all hover:bg-primary-50 sm:w-auto"
               >
                 Start your free trial
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </a>
-              <a
-                href="#features"
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollToSection("features")}
                 className="inline-flex w-full items-center justify-center rounded-xl border border-white/30 px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/10 sm:w-auto"
               >
                 Explore features
-              </a>
+              </button>
             </div>
           </div>
         </motion.div>

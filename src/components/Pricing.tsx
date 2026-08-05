@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 
 const PLANS = [
@@ -53,6 +54,7 @@ const PLANS = [
 ];
 
 export function Pricing() {
+  const navigate = useNavigate();
   return (
     <section id="pricing" className="py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -103,8 +105,9 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <a
-                href="#"
+              <button
+                type="button"
+                onClick={() => navigate("/signup")}
                 className={`mt-8 block rounded-xl px-4 py-3 text-center text-sm font-semibold transition-all ${
                   plan.highlighted
                     ? "bg-primary-600 text-white shadow-md hover:bg-primary-700 hover:shadow-lg"
@@ -112,7 +115,7 @@ export function Pricing() {
                 }`}
               >
                 {plan.cta}
-              </a>
+              </button>
             </motion.div>
           ))}
         </div>
