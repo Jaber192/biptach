@@ -11,6 +11,17 @@
     <title>Biptach — HVAC Field Service Management, Simplified</title>
   </head>
   <body>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("biptach-theme");
+          var theme = stored === "light" || stored === "dark"
+            ? stored
+            : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          if (theme === "dark") document.documentElement.classList.add("dark");
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
