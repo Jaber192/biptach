@@ -104,6 +104,14 @@ export class IndexedDBManager {
         notificationsStore.createIndex("read", "read", { unique: false });
       }
 
+      if (!db.objectStoreNames.contains("profiles")) {
+        db.createObjectStore("profiles", { keyPath: "id" });
+      }
+
+      if (!db.objectStoreNames.contains("companies")) {
+        db.createObjectStore("companies", { keyPath: "id" });
+      }
+
       if (!db.objectStoreNames.contains("sync_queue")) {
         const syncQueueStore = db.createObjectStore("sync_queue", { keyPath: "id" });
         syncQueueStore.createIndex("status", "status", { unique: false });

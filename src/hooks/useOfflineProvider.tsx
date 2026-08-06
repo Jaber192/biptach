@@ -23,6 +23,22 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
 
     const seedCache = async () => {
       try {
+        // Seed profiles
+        if (await indexedDBManager.isStoreEmpty("profiles")) {
+          const { data } = await supabase.from("profiles").select("*");
+          if (data && data.length > 0) {
+            await indexedDBManager.seedStore("profiles", data as Record<string, unknown>[] & { id: string }[]);
+          }
+        }
+
+        // Seed companies
+        if (await indexedDBManager.isStoreEmpty("companies")) {
+          const { data } = await supabase.from("companies").select("*");
+          if (data && data.length > 0) {
+            await indexedDBManager.seedStore("companies", data as Record<string, unknown>[] & { id: string }[]);
+          }
+        }
+
         // Seed work_orders
         if (await indexedDBManager.isStoreEmpty("work_orders")) {
           const { data } = await supabase.from("work_orders").select("*");

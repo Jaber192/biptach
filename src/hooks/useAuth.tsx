@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
+import { indexedDBManager } from "../lib/indexeddb";
 import type { AuthContextValue, Company, Profile } from "../types";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -61,6 +62,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return p;
   }
 
+  async function loadProfileOffline(uid: string): Promise<Profile | null> {
+    try {
+      const cached = await indexedDBManager.getAll<Profile>("profiles");
+      const p = cached.find(profile => profile.id === uid);
+      if (p) {
+        setProfile(p);
+        if (p.company_id) {
+          const companies = await indexedDBManager.getAll<Company>("companies");
+          const company = companies.find(c => c.id === p.company_id);
+          if (company) {
+            setCompany(company);
+          }
+        }
+        return p;
+      }
+    } catch (e) {
+      console.error('Failed to load profile from cache:', e);
+    }
+    return null;
+  }
+
   useEffect(() => {
     let mounted = true;
 
@@ -75,8 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const parsed = JSON.parse(storedSession);
           if (parsed?.currentSession) {
             setSession(parsed.currentSession);
-            // Don't load profile when offline - it will fail
-            // The app will work with cached data from IndexedDB
+            // Load profile from IndexedDB cache when offline
+            loadProfileOffline(parsed.currentSession.user.id);
           }
         }
       } catch (e) {
