@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
-import { indexedDBManager } from "../lib/indexeddb";
 import type { AuthContextValue, Company, Profile } from "../types";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -54,49 +53,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const p = data as Profile | null;
     setProfile(p);
+    
+    // Save profile to localStorage for instant offline restore
+    if (p) {
+      try {
+        localStorage.setItem('biptach-profile', JSON.stringify(p));
+      } catch (e) {
+        console.warn('Failed to cache profile to localStorage:', e);
+      }
+    }
+    
     if (p?.company_id) {
-      await loadCompany(p.company_id);
+      const c = await loadCompany(p.company_id);
+      // Save company to localStorage too
+      if (c) {
+        try {
+          localStorage.setItem('biptach-company', JSON.stringify(c));
+        } catch (e) {
+          console.warn('Failed to cache company to localStorage:', e);
+        }
+      }
     } else {
       setCompany(null);
     }
     return p;
   }
 
-  async function loadProfileOffline(uid: string, sessionUser?: any): Promise<Profile | null> {
+  function loadProfileOffline(uid: string, sessionUser?: any): Profile | null {
+    // Try localStorage first (instant, synchronous)
     try {
-      const cached = await indexedDBManager.getAll<Profile>("profiles");
-      const p = cached.find(profile => profile.id === uid);
-      if (p) {
-        setProfile(p);
-        if (p.company_id) {
-          const companies = await indexedDBManager.getAll<Company>("companies");
-          const company = companies.find(c => c.id === p.company_id);
-          if (company) {
-            setCompany(company);
+      const cachedProfile = localStorage.getItem('biptach-profile');
+      if (cachedProfile) {
+        const p = JSON.parse(cachedProfile) as Profile;
+        if (p.id === uid) {
+          console.log('[Auth] Restored profile from localStorage');
+          setProfile(p);
+          
+          // Restore company too
+          const cachedCompany = localStorage.getItem('biptach-company');
+          if (cachedCompany && p.company_id) {
+            const c = JSON.parse(cachedCompany) as Company;
+            if (c.id === p.company_id) {
+              console.log('[Auth] Restored company from localStorage');
+              setCompany(c);
+            }
           }
+          return p;
         }
-        return p;
-      }
-      
-      // Profile not in IndexedDB — construct minimal fallback from session data
-      if (sessionUser) {
-        console.log('[Auth] Profile not in IndexedDB, constructing fallback from session');
-        const fallbackProfile: Profile = {
-          id: uid,
-          name: sessionUser.user_metadata?.name || sessionUser.email || 'User',
-          role: 'owner', // Default role for offline fallback
-          phone: sessionUser.phone || null,
-          is_active: true,
-          company_id: null, // Will be set if we can find it
-          created_at: sessionUser.created_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setProfile(fallbackProfile);
-        return fallbackProfile;
       }
     } catch (e) {
-      console.error('Failed to load profile from cache:', e);
+      console.warn('Failed to load profile from localStorage:', e);
     }
+    
+    // Fallback: construct minimal profile from session data
+    if (sessionUser) {
+      console.log('[Auth] Profile not in localStorage, constructing fallback from session');
+      const fallbackProfile: Profile = {
+        id: uid,
+        name: sessionUser.user_metadata?.name || sessionUser.email || 'User',
+        role: 'owner',
+        phone: sessionUser.phone || null,
+        is_active: true,
+        company_id: null,
+        created_at: sessionUser.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setProfile(fallbackProfile);
+      return fallbackProfile;
+    }
+    
     return null;
   }
 
@@ -118,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (parsed?.access_token && parsed?.user) {
             console.log('[Auth] Restoring offline session for user:', parsed.user.id);
             setSession(parsed);
-            // Load profile from IndexedDB cache when offline, with session user as fallback
+            // Load profile from localStorage (instant) with session user as fallback
             loadProfileOffline(parsed.user.id, parsed.user);
           } else {
             console.warn('[Auth] Stored session missing access_token or user:', parsed);
