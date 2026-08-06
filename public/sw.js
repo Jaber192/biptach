@@ -1,7 +1,19 @@
 const CACHE_NAME = 'biptach-v1';
 
-// Install: skip waiting to activate immediately
+// Assets to pre-cache on install for immediate offline support
+const PRECACHE_URLS = [
+  '/index.html',
+  '/manifest.json',
+  '/favicon.svg'
+];
+
+// Install: pre-cache essential assets and skip waiting to activate immediately
 self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(PRECACHE_URLS);
+    })
+  );
   self.skipWaiting();
 });
 
