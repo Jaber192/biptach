@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./hooks/useAuth";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { NotificationsProvider } from "./hooks/useNotifications";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
@@ -25,6 +25,13 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { NotFoundPage } from "./pages/PlaceholderPage";
 
 function MarketingSite() {
+  const { session, loading } = useAuth();
+
+  // Redirect logged-in users to dashboard
+  if (!loading && session) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Navbar />
