@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { indexedDBManager } from "../lib/indexeddb";
+import { enqueueOperation, isOnline } from "../lib/offlineQueue";
 import type { WorkOrder, WorkOrderInput } from "../types";
 
 export type WorkOrderPatch = Partial<
@@ -53,6 +55,7 @@ function rowToWorkOrder(row: WorkOrderRow): WorkOrder {
   };
 }
 
+
 function inputToRow(input: WorkOrderInput): Omit<WorkOrderRow, "id" | "user_id" | "company_id" | "created_at" | "updated_at" | "clock_in_time" | "clock_out_time" | "tech_notes" | "photos" | "signature_storage_id"> {
   return {
     title: input.title,
@@ -86,32 +89,61 @@ export function useWorkOrders() {
     let cancelled = false;
 
     async function load() {
-      const { data, error } = await supabase
-        .from("work_orders")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!cancelled) {
-        if (error) {
-          console.error("Failed to load work orders:", error.message);
+      // 1. Load from IndexedDB cache first (instant, works offline)
+      try {
+        const cached = await indexedDBManager.getAll<WorkOrderRow>("work_orders");
+        if (!cancelled && cached.length > 0) {
+          setWorkOrders(cached.map(rowToWorkOrder));
+          setLoading(false);
         }
-        setWorkOrders((data as WorkOrderRow[] | null)?.map(rowToWorkOrder) ?? []);
+      } catch (e) {
+        console.error("Failed to load work orders from cache:", e);
+      }
+
+      // 2. If online, fetch from Supabase and update cache
+      if (isOnline()) {
+        const { data, error } = await supabase
+          .from("work_orders")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (!cancelled) {
+          if (error) {
+            console.error("Failed to load work orders:", error.message);
+          }
+          const rows = (data as WorkOrderRow[] | null) ?? [];
+          setWorkOrders(rows.map(rowToWorkOrder));
+          setLoading(false);
+
+          // Update cache
+          if (rows.length > 0) {
+            await indexedDBManager.seedStore("work_orders", rows);
+          }
+        }
+      } else if (!cancelled) {
         setLoading(false);
       }
     }
 
     load();
 
+    // Real-time subscription (only works when online)
     const channel = supabase
       .channel("work-orders-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "work_orders" }, (payload) => {
         if (payload.eventType === "INSERT" && payload.new) {
-          setWorkOrders((prev) => [rowToWorkOrder(payload.new as WorkOrderRow), ...prev]);
+          const row = payload.new as WorkOrderRow;
+          setWorkOrders((prev) => [rowToWorkOrder(row), ...prev]);
+          indexedDBManager.add("work_orders", row).catch(() => {});
         } else if (payload.eventType === "UPDATE" && payload.new) {
-          const updated = rowToWorkOrder(payload.new as WorkOrderRow);
+          const row = payload.new as WorkOrderRow;
+          const updated = rowToWorkOrder(row);
           setWorkOrders((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+          indexedDBManager.update("work_orders", row.id, row).catch(() => {});
         } else if (payload.eventType === "DELETE" && payload.old) {
-          setWorkOrders((prev) => prev.filter((w) => w.id !== (payload.old as WorkOrderRow).id));
+          const row = payload.old as WorkOrderRow;
+          setWorkOrders((prev) => prev.filter((w) => w.id !== row.id));
+          indexedDBManager.delete("work_orders", row.id).catch(() => {});
         }
       })
       .subscribe();
@@ -123,37 +155,112 @@ export function useWorkOrders() {
   }, []);
 
   const addWorkOrder = useCallback(async (input: WorkOrderInput) => {
-    const { data, error } = await supabase
-      .from("work_orders")
-      .insert(inputToRow(input))
-      .select("*")
-      .single();
-    if (error) {
-      console.error("Failed to add work order:", error.message);
-      return null;
+    if (isOnline()) {
+      const { data, error } = await supabase
+        .from("work_orders")
+        .insert(inputToRow(input))
+        .select("*")
+        .single();
+      if (error) {
+        console.error("Failed to add work order:", error.message);
+        return null;
+      }
+      const row = data as WorkOrderRow;
+      await indexedDBManager.add("work_orders", row).catch(() => {});
+      return rowToWorkOrder(row);
+    } else {
+      // Offline: create locally and enqueue
+      const tempId = crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 15);
+      const now = new Date().toISOString();
+      const row: WorkOrderRow = {
+        id: tempId,
+        user_id: "",
+        company_id: "",
+        ...inputToRow(input),
+        clock_in_time: null,
+        clock_out_time: null,
+        tech_notes: null,
+        photos: [],
+        signature_storage_id: null,
+        created_at: now,
+        updated_at: now,
+      };
+      await indexedDBManager.add("work_orders", row).catch(() => {});
+      await enqueueOperation({
+        type: "create",
+        entity: "work_orders",
+        data: row as unknown as Record<string, unknown>,
+      });
+      setWorkOrders((prev) => [rowToWorkOrder(row), ...prev]);
+      return rowToWorkOrder(row);
     }
-    return rowToWorkOrder(data as WorkOrderRow);
   }, []);
 
   const updateWorkOrder = useCallback(async (id: string, input: WorkOrderInput) => {
-    const { error } = await supabase
-      .from("work_orders")
-      .update(inputToRow(input))
-      .eq("id", id);
-    if (error) console.error("Failed to update work order:", error.message);
+    if (isOnline()) {
+      const { error } = await supabase
+        .from("work_orders")
+        .update(inputToRow(input))
+        .eq("id", id);
+      if (error) console.error("Failed to update work order:", error.message);
+      else {
+        const row = { id, ...inputToRow(input), updated_at: new Date().toISOString() };
+        await indexedDBManager.update("work_orders", id, row).catch(() => {});
+      }
+    } else {
+      const patch = inputToRow(input);
+      await indexedDBManager.update("work_orders", id, { ...patch, updated_at: new Date().toISOString() }).catch(() => {});
+      await enqueueOperation({
+        type: "update",
+        entity: "work_orders",
+        data: { id, ...patch } as Record<string, unknown>,
+      });
+      setWorkOrders((prev) =>
+        prev.map((w) => (w.id === id ? { ...w, ...input, updated_at: new Date().toISOString() } : w)),
+      );
+    }
   }, []);
 
   const patchWorkOrder = useCallback(async (id: string, patch: WorkOrderPatch) => {
-    const { error } = await supabase
-      .from("work_orders")
-      .update(patchToRow(patch))
-      .eq("id", id);
-    if (error) console.error("Failed to patch work order:", error.message);
+    const rowPatch = patchToRow(patch);
+    if (isOnline()) {
+      const { error } = await supabase
+        .from("work_orders")
+        .update(rowPatch)
+        .eq("id", id);
+      if (error) console.error("Failed to patch work order:", error.message);
+      else {
+        await indexedDBManager.update("work_orders", id, { ...rowPatch, updated_at: new Date().toISOString() }).catch(() => {});
+      }
+    } else {
+      await indexedDBManager.update("work_orders", id, { ...rowPatch, updated_at: new Date().toISOString() }).catch(() => {});
+      await enqueueOperation({
+        type: "update",
+        entity: "work_orders",
+        data: { id, ...rowPatch } as Record<string, unknown>,
+      });
+      setWorkOrders((prev) =>
+        prev.map((w) => (w.id === id ? { ...w, ...patch, updated_at: new Date().toISOString() } : w)),
+      );
+    }
   }, []);
 
   const deleteWorkOrder = useCallback(async (id: string) => {
-    const { error } = await supabase.from("work_orders").delete().eq("id", id);
-    if (error) console.error("Failed to delete work order:", error.message);
+    if (isOnline()) {
+      const { error } = await supabase.from("work_orders").delete().eq("id", id);
+      if (error) console.error("Failed to delete work order:", error.message);
+      else {
+        await indexedDBManager.delete("work_orders", id).catch(() => {});
+      }
+    } else {
+      await indexedDBManager.delete("work_orders", id).catch(() => {});
+      await enqueueOperation({
+        type: "delete",
+        entity: "work_orders",
+        data: { id } as Record<string, unknown>,
+      });
+      setWorkOrders((prev) => prev.filter((w) => w.id !== id));
+    }
   }, []);
 
   const getWorkOrder = useCallback(

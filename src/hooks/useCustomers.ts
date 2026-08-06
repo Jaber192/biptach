@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { indexedDBManager } from "../lib/indexeddb";
+import { enqueueOperation, isOnline } from "../lib/offlineQueue";
 import type { Customer, CustomerInput } from "../types";
 
 type CustomerRow = {
@@ -55,16 +57,37 @@ export function useCustomers() {
     let cancelled = false;
 
     async function load() {
-      const { data, error } = await supabase
-        .from("customers")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (!cancelled) {
-        if (error) {
-          console.error("Failed to load customers:", error.message);
+      // 1. Load from IndexedDB cache first
+      try {
+        const cached = await indexedDBManager.getAll<CustomerRow>("customers");
+        if (!cancelled && cached.length > 0) {
+          setCustomers(cached.map(rowToCustomer));
+          setLoading(false);
         }
-        setCustomers((data as CustomerRow[] | null)?.map(rowToCustomer) ?? []);
+      } catch (e) {
+        console.error("Failed to load customers from cache:", e);
+      }
+
+      // 2. If online, fetch from Supabase and update cache
+      if (isOnline()) {
+        const { data, error } = await supabase
+          .from("customers")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (!cancelled) {
+          if (error) {
+            console.error("Failed to load customers:", error.message);
+          }
+          const rows = (data as CustomerRow[] | null) ?? [];
+          setCustomers(rows.map(rowToCustomer));
+          setLoading(false);
+
+          if (rows.length > 0) {
+            await indexedDBManager.seedStore("customers", rows);
+          }
+        }
+      } else if (!cancelled) {
         setLoading(false);
       }
     }
@@ -75,12 +98,18 @@ export function useCustomers() {
       .channel("customers-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "customers" }, (payload) => {
         if (payload.eventType === "INSERT" && payload.new) {
-          setCustomers((prev) => [rowToCustomer(payload.new as CustomerRow), ...prev]);
+          const row = payload.new as CustomerRow;
+          setCustomers((prev) => [rowToCustomer(row), ...prev]);
+          indexedDBManager.add("customers", row).catch(() => {});
         } else if (payload.eventType === "UPDATE" && payload.new) {
-          const updated = rowToCustomer(payload.new as CustomerRow);
+          const row = payload.new as CustomerRow;
+          const updated = rowToCustomer(row);
           setCustomers((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+          indexedDBManager.update("customers", row.id, row).catch(() => {});
         } else if (payload.eventType === "DELETE" && payload.old) {
-          setCustomers((prev) => prev.filter((c) => c.id !== (payload.old as CustomerRow).id));
+          const row = payload.old as CustomerRow;
+          setCustomers((prev) => prev.filter((c) => c.id !== row.id));
+          indexedDBManager.delete("customers", row.id).catch(() => {});
         }
       })
       .subscribe();
@@ -92,29 +121,82 @@ export function useCustomers() {
   }, []);
 
   const addCustomer = useCallback(async (input: CustomerInput) => {
-    const { data, error } = await supabase
-      .from("customers")
-      .insert(inputToRow(input))
-      .select("*")
-      .single();
-    if (error) {
-      console.error("Failed to add customer:", error.message);
-      return null;
+    if (isOnline()) {
+      const { data, error } = await supabase
+        .from("customers")
+        .insert(inputToRow(input))
+        .select("*")
+        .single();
+      if (error) {
+        console.error("Failed to add customer:", error.message);
+        return null;
+      }
+      const row = data as CustomerRow;
+      await indexedDBManager.add("customers", row).catch(() => {});
+      return rowToCustomer(row);
+    } else {
+      const tempId = crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 15);
+      const now = new Date().toISOString();
+      const row: CustomerRow = {
+        id: tempId,
+        user_id: "",
+        company_id: "",
+        ...inputToRow(input),
+        created_at: now,
+        updated_at: now,
+      };
+      await indexedDBManager.add("customers", row).catch(() => {});
+      await enqueueOperation({
+        type: "create",
+        entity: "customers",
+        data: row as unknown as Record<string, unknown>,
+      });
+      setCustomers((prev) => [rowToCustomer(row), ...prev]);
+      return rowToCustomer(row);
     }
-    return rowToCustomer(data as CustomerRow);
   }, []);
 
   const updateCustomer = useCallback(async (id: string, input: CustomerInput) => {
-    const { error } = await supabase
-      .from("customers")
-      .update(inputToRow(input))
-      .eq("id", id);
-    if (error) console.error("Failed to update customer:", error.message);
+    if (isOnline()) {
+      const { error } = await supabase
+        .from("customers")
+        .update(inputToRow(input))
+        .eq("id", id);
+      if (error) console.error("Failed to update customer:", error.message);
+      else {
+        const row = { id, ...inputToRow(input), updated_at: new Date().toISOString() };
+        await indexedDBManager.update("customers", id, row).catch(() => {});
+      }
+    } else {
+      const patch = inputToRow(input);
+      await indexedDBManager.update("customers", id, { ...patch, updated_at: new Date().toISOString() }).catch(() => {});
+      await enqueueOperation({
+        type: "update",
+        entity: "customers",
+        data: { id, ...patch } as Record<string, unknown>,
+      });
+      setCustomers((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, ...input, updated_at: new Date().toISOString() } : c)),
+      );
+    }
   }, []);
 
   const deleteCustomer = useCallback(async (id: string) => {
-    const { error } = await supabase.from("customers").delete().eq("id", id);
-    if (error) console.error("Failed to delete customer:", error.message);
+    if (isOnline()) {
+      const { error } = await supabase.from("customers").delete().eq("id", id);
+      if (error) console.error("Failed to delete customer:", error.message);
+      else {
+        await indexedDBManager.delete("customers", id).catch(() => {});
+      }
+    } else {
+      await indexedDBManager.delete("customers", id).catch(() => {});
+      await enqueueOperation({
+        type: "delete",
+        entity: "customers",
+        data: { id } as Record<string, unknown>,
+      });
+      setCustomers((prev) => prev.filter((c) => c.id !== id));
+    }
   }, []);
 
   const getCustomer = useCallback(

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, ClipboardList, CalendarClock, ChartBar as BarChart3, Settings, LogOut, Menu, X, Moon, Sun, Wind, Smartphone } from "lucide-react";
+import { LayoutDashboard, Users, ClipboardList, CalendarClock, ChartBar as BarChart3, Settings, LogOut, Menu, X, Moon, Sun, Wind, Smartphone, WifiOff, RefreshCw } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
+import { useOffline } from "../hooks/useOfflineProvider";
 import { NotificationBell } from "./NotificationBell";
 import type { UserRole } from "../types";
 import type { ReactNode } from "react";
@@ -28,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
 export function AppLayout({ children }: { children: ReactNode }) {
   const { profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { isOnline, isSyncing, pendingCount } = useOffline();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -155,7 +157,23 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </button>
       </header>
 
-      <main className="px-4 pt-20 pb-8 lg:pl-64 lg:pt-24">
+      {/* Offline banner */}
+      {!isOnline && (
+        <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 bg-amber-500 px-4 py-2 text-sm font-medium text-white">
+          <WifiOff className="h-4 w-4" />
+          <span>You are offline. Changes will sync when you reconnect.</span>
+        </div>
+      )}
+
+      {/* Syncing banner */}
+      {isSyncing && (
+        <div className="fixed inset-x-0 top-0 z-50 flex items-center justify-center gap-2 bg-blue-500 px-4 py-2 text-sm font-medium text-white">
+          <RefreshCw className="h-4 w-4 animate-spin" />
+          <span>Syncing {pendingCount} pending change{pendingCount !== 1 ? "s" : ""}...</span>
+        </div>
+      )}
+
+      <main className={`px-4 pt-20 pb-8 lg:pl-64 lg:pt-24 ${!isOnline || isSyncing ? "pt-28 lg:pt-32" : ""}`}>
         <div className="mx-auto max-w-7xl">{children}</div>
       </main>
     </div>

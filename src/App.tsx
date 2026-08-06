@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { NotificationsProvider } from "./hooks/useNotifications";
+import { OfflineProvider } from "./hooks/useOfflineProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
 import { Navbar } from "./components/Navbar";
@@ -66,6 +67,7 @@ function AuthRedirect() {
 export default function App() {
   return (
     <AuthProvider>
+      <OfflineProvider>
       <NotificationsProvider>
       <BrowserRouter>
         <Routes>
@@ -158,6 +160,7 @@ export default function App() {
         </Routes>
       </BrowserRouter>
       </NotificationsProvider>
+      </OfflineProvider>
     </AuthProvider>
   );
 }
