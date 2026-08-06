@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isOffline) {
       // When offline, try to restore session from localStorage
       try {
-        const storedSession = localStorage.getItem('sb-auth-token');
+        const storedSession = localStorage.getItem('biptach-auth');
         if (storedSession) {
           const parsed = JSON.parse(storedSession);
           if (parsed?.currentSession) {
