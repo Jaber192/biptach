@@ -25,13 +25,6 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { NotFoundPage } from "./pages/PlaceholderPage";
 
 function MarketingSite() {
-  const { session, loading } = useAuth();
-
-  // Redirect logged-in users to dashboard
-  if (!loading && session) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   return (
     <div className="min-h-screen bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <Navbar />
@@ -47,13 +40,36 @@ function MarketingSite() {
   );
 }
 
+function AuthRedirect() {
+  const { session, loading } = useAuth();
+
+  // Redirect logged-in users to dashboard
+  if (!loading && session) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Show loading state while auth is being checked
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <MarketingSite />;
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <NotificationsProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<MarketingSite />} />
+          <Route index element={<AuthRedirect />} />
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
