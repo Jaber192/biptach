@@ -1,23 +1,49 @@
-const CACHE_NAME = 'biptach-v2';
+const CACHE_NAME = 'biptach-v3';
 
-// Assets to pre-cache on install for immediate offline support
-const PRECACHE_URLS = [
+// Static assets to always pre-cache
+const STATIC_URLS = [
   '/index.html',
   '/manifest.json',
   '/favicon.svg'
 ];
 
-// Install: pre-cache essential assets and skip waiting to activate immediately
+// Install: fetch index.html, discover hashed JS/CSS bundles, pre-cache everything
 self.addEventListener('install', event => {
   console.log('[SW] Install event fired');
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      console.log('[SW] Pre-caching:', PRECACHE_URLS);
-      return cache.addAll(PRECACHE_URLS).then(() => {
-        console.log('[SW] Pre-caching succeeded');
-      }).catch(err => {
-        console.error('[SW] Pre-caching FAILED:', err);
-      });
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // 1. Cache static assets
+      console.log('[SW] Pre-caching static assets:', STATIC_URLS);
+      await cache.addAll(STATIC_URLS);
+      console.log('[SW] Static assets cached');
+
+      // 2. Fetch index.html and extract JS/CSS bundle URLs
+      try {
+        const indexResponse = await fetch('/index.html');
+        const html = await indexResponse.text();
+
+        // Match <script src="/assets/..."> and <link rel="stylesheet" href="/assets/...">
+        const assetRegex = /(?:src|href)="(\/assets\/[^"]+)"/g;
+        const assetUrls = [];
+        let match;
+        while ((match = assetRegex.exec(html)) !== null) {
+          assetUrls.push(match[1]);
+        }
+
+        if (assetUrls.length > 0) {
+          console.log('[SW] Discovered bundled assets:', assetUrls);
+          await cache.addAll(assetUrls);
+          console.log('[SW] Bundled assets cached');
+        } else {
+          console.warn('[SW] No bundled assets found in index.html');
+        }
+      } catch (err) {
+        console.error('[SW] Failed to discover/cache bundled assets:', err);
+      }
+
+      console.log('[SW] All pre-caching complete');
+    }).catch(err => {
+      console.error('[SW] Pre-caching FAILED entirely:', err);
     })
   );
   self.skipWaiting();
@@ -25,11 +51,14 @@ self.addEventListener('install', event => {
 
 // Activate: clean up old caches and claim all clients
 self.addEventListener('activate', event => {
+  console.log('[SW] Activate event fired');
   event.waitUntil(
     caches.keys().then(cacheNames => {
+      console.log('[SW] Existing caches:', cacheNames);
       return Promise.all(
         cacheNames.map(cacheName => {
           if (cacheName !== CACHE_NAME) {
+            console.log('[SW] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
