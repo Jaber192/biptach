@@ -93,12 +93,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // When offline, try to restore session from localStorage
       try {
         const storedSession = localStorage.getItem('biptach-auth');
+        console.log('[Auth] Offline mode — stored session key found:', !!storedSession);
         if (storedSession) {
           const parsed = JSON.parse(storedSession);
-          if (parsed?.currentSession) {
-            setSession(parsed.currentSession);
+          console.log('[Auth] Parsed session keys:', Object.keys(parsed));
+          // Supabase stores the session directly: { access_token, refresh_token, user, ... }
+          if (parsed?.access_token && parsed?.user) {
+            console.log('[Auth] Restoring offline session for user:', parsed.user.id);
+            setSession(parsed);
             // Load profile from IndexedDB cache when offline
-            loadProfileOffline(parsed.currentSession.user.id);
+            loadProfileOffline(parsed.user.id);
+          } else {
+            console.warn('[Auth] Stored session missing access_token or user:', parsed);
           }
         }
       } catch (e) {

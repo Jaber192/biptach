@@ -5,6 +5,14 @@ interface CacheEntry {
   size?: string;
 }
 
+interface AuthStatus {
+  online: boolean;
+  localStorageKey: string | null;
+  hasAccessToken: boolean;
+  hasUser: boolean;
+  userId: string | null;
+}
+
 interface SWStatus {
   supported: boolean;
   registered: boolean;
@@ -13,6 +21,7 @@ interface SWStatus {
   cacheName: string;
   cacheEntries: CacheEntry[];
   cacheCount: number;
+  auth: AuthStatus;
   lastUpdated: string;
 }
 
@@ -26,6 +35,13 @@ export function SWDebugPanel() {
     cacheName: "biptach-v3",
     cacheEntries: [],
     cacheCount: 0,
+    auth: {
+      online: navigator.onLine,
+      localStorageKey: null,
+      hasAccessToken: false,
+      hasUser: false,
+      userId: null,
+    },
     lastUpdated: "",
   });
 
@@ -38,6 +54,13 @@ export function SWDebugPanel() {
       cacheName: "biptach-v3",
       cacheEntries: [],
       cacheCount: 0,
+      auth: {
+        online: navigator.onLine,
+        localStorageKey: null,
+        hasAccessToken: false,
+        hasUser: false,
+        userId: null,
+      },
       lastUpdated: new Date().toLocaleTimeString(),
     };
 
@@ -78,6 +101,20 @@ export function SWDebugPanel() {
       newStatus.cacheCount = allEntries.length;
     } catch (e) {
       console.error("Cache check failed:", e);
+    }
+
+    // Check auth status
+    try {
+      const authData = localStorage.getItem("biptach-auth");
+      if (authData) {
+        newStatus.auth.localStorageKey = "biptach-auth";
+        const parsed = JSON.parse(authData);
+        newStatus.auth.hasAccessToken = !!parsed?.access_token;
+        newStatus.auth.hasUser = !!parsed?.user;
+        newStatus.auth.userId = parsed?.user?.id || null;
+      }
+    } catch (e) {
+      console.error("Auth check failed:", e);
     }
 
     setStatus(newStatus);
@@ -152,6 +189,42 @@ export function SWDebugPanel() {
                 {status.controller ? "✅ " + status.controller.split("/").pop() : "❌ None"}
               </span>
             </p>
+          </div>
+        </div>
+
+        {/* Auth Section */}
+        <div className="rounded-lg bg-slate-100 p-3 dark:bg-slate-800">
+          <p className="font-semibold mb-1">Auth</p>
+          <div className="space-y-1">
+            <p>
+              Online:{" "}
+              <span className={status.auth.online ? "text-green-600" : "text-orange-600"}>
+                {status.auth.online ? "✅ Yes" : "⚠️ Offline"}
+              </span>
+            </p>
+            <p>
+              localStorage key:{" "}
+              <span className={status.auth.localStorageKey ? "text-green-600" : "text-red-600"}>
+                {status.auth.localStorageKey ? "✅ " + status.auth.localStorageKey : "❌ Not found"}
+              </span>
+            </p>
+            <p>
+              Has access_token:{" "}
+              <span className={status.auth.hasAccessToken ? "text-green-600" : "text-red-600"}>
+                {status.auth.hasAccessToken ? "✅ Yes" : "❌ No"}
+              </span>
+            </p>
+            <p>
+              Has user:{" "}
+              <span className={status.auth.hasUser ? "text-green-600" : "text-red-600"}>
+                {status.auth.hasUser ? "✅ Yes" : "❌ No"}
+              </span>
+            </p>
+            {status.auth.userId && (
+              <p className="text-slate-500 text-[10px] break-all">
+                User ID: {status.auth.userId}
+              </p>
+            )}
           </div>
         </div>
 
