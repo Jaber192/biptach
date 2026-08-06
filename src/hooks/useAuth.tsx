@@ -64,10 +64,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
+    // Check if we're offline - if so, skip Supabase calls and load from cache
+    const isOffline = !navigator.onLine;
+    
+    if (isOffline) {
+      // When offline, try to restore session from localStorage
+      try {
+        const storedSession = localStorage.getItem('sb-auth-token');
+        if (storedSession) {
+          const parsed = JSON.parse(storedSession);
+          if (parsed?.currentSession) {
+            setSession(parsed.currentSession);
+            // Don't load profile when offline - it will fail
+            // The app will work with cached data from IndexedDB
+          }
+        }
+      } catch (e) {
+        console.error('Failed to restore offline session:', e);
+      }
+      setLoading(false);
+      return;
+    }
+
+    // Online: normal auth flow with timeout
+    const authTimeout = setTimeout(() => {
+      if (mounted) {
+        console.warn('Auth loading timed out');
+        setLoading(false);
+      }
+    }, 10000); // 10 second timeout
+
     supabase.auth
       .getSession()
       .then(({ data }) => {
         if (!mounted) return;
+        clearTimeout(authTimeout);
         (async () => {
           setSession(data.session);
           if (data.session?.user) {
@@ -77,7 +108,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })();
       })
       .catch(() => {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          clearTimeout(authTimeout);
+          setLoading(false);
+        }
       });
 
     // Skip INITIAL_SESSION — getSession() above already restores the saved
@@ -100,6 +134,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(authTimeout);
       listener.subscription.unsubscribe();
     };
   }, []);
