@@ -26,12 +26,22 @@ export function ProtectedRoute({
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-  if (roles && profile && !roles.includes(profile.role)) {
+  // Wait for profile to load before deciding — otherwise a null profile
+  // (still loading) triggers a false redirect to /signup.
+  if (!profile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+      </div>
+    );
+  }
+
+  if (roles && !roles.includes(profile.role)) {
     const home = profile.role === "technician" ? "/my-jobs" : "/dashboard";
     return <Navigate to={home} replace />;
   }
 
-  if (session && profile && !profile.company_id) {
+  if (!profile.company_id) {
     return <Navigate to="/signup" replace />;
   }
 

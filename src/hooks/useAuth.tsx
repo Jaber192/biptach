@@ -64,18 +64,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      (async () => {
-        setSession(data.session);
-        if (data.session?.user) {
-          await loadProfile(data.session.user.id);
-        }
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
+        (async () => {
+          setSession(data.session);
+          if (data.session?.user) {
+            await loadProfile(data.session.user.id);
+          }
+          if (mounted) setLoading(false);
+        })();
+      })
+      .catch(() => {
         if (mounted) setLoading(false);
-      })();
-    });
+      });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    // Skip INITIAL_SESSION — getSession() above already restores the saved
+    // session from storage. onAuthStateChange fires INITIAL_SESSION before
+    // storage is read, which can arrive with null and overwrite the real
+    // session, causing a false redirect to /signin on every page reload.
+    const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (event === "INITIAL_SESSION") return;
       (async () => {
         setSession(newSession);
         if (newSession?.user) {
