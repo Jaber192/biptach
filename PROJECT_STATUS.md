@@ -799,31 +799,32 @@ This section is overwritten after every AI session.
 
 Session Date
 
-6 August 2026 (session 6)
+31 July 2026 (session 5)
 
 Work Completed
 
-- Diagnosed and fixed the "forced to re-login on every app reload" bug.
-- Root cause: migration 20260806000200 moved the RLS helper functions (current_company_id, has_role) from the `public` schema to a new `rls_helpers` schema and revoked ALL access from the `authenticated` role. RLS policy expressions on every company-scoped table (profiles, customers, work_orders, technicians, notifications, etc.) reference these functions. Without USAGE on the schema and EXECUTE on the functions, every query for an authenticated user fails with "permission denied for function". On page reload, the profile lookup fails, so the auth context sees no profile and ProtectedRoute redirects to /signin — even though the Supabase session token was still valid in localStorage.
-- Applied migration "20260806070000_grant_rls_helpers_to_authenticated": granted USAGE on schema `rls_helpers` and EXECUTE on both helper functions to the `authenticated` role only. anon and PUBLIC remain revoked (the functions are outside the `public` schema, so they are not reachable via the Data API).
-- Verified the fix via execute_sql: authenticated can now execute both rls_helpers.current_company_id() and rls_helpers.has_role(text[]).
-- Confirmed production build passes.
+- Security audit of all 14 Supabase migration files + consolidated supabase-setup.sql
+- Found and documented a privilege-escalation / tenant-isolation bug in the profiles self-update RLS policy: the WITH CHECK only constrained the `id` column, so any authenticated user could self-promote their own `role` to 'owner' or change their own `company_id` to hop into another company via the Data API. Fix prepared (migration SQL) that adds guards so role/company_id cannot change through the self-update path — only through the owner-scoped policy.
+- Found and documented stale first-user-admin logic in handle_new_user(): migration 20260727140123 added 'admin' for the first signup, but migration 20260730181502 overwrote it back to always 'technician'. The schema now uses a 4-role set (owner/manager/dispatcher/technician) with no 'admin' role, so the first-user logic is obsolete. Fix prepared that re-asserts a clean 'technician' default; the owner role is granted later by the create-company edge function.
+- Rewrote supabase-setup.sql as a clean, corrected consolidated setup script matching the actual live schema: pinned set_updated_at search_path, corrected self-update policy, correct EXECUTE grants on RLS helper functions (current_company_id/has_role granted to authenticated), removed obsolete is_admin() references, removed stale first-user-admin logic.
+- Confirmed production build and typecheck pass.
 
 Files Modified
 
+- supabase-setup.sql (rewritten as clean consolidated setup script with security fixes)
 - PROJECT_STATUS.md (updated session summary)
 
 Database Migrations
 
-- Applied "20260806070000_grant_rls_helpers_to_authenticated.sql" via mcp__supabase__apply_migration.
+- Migration "20260731130000_fix_profile_self_update_escalation" was prepared but could NOT be applied: the Supabase MCP server (apply_migration / execute_sql / get_security_posture) is returning HTML error pages instead of JSON for all calls this session. The migration SQL is ready and must be applied via mcp__supabase__apply_migration once the server is back. The corrected supabase-setup.sql reflects the intended post-fix state.
 
 Current Blocker
 
-None.
+The Supabase MCP server is temporarily unavailable (returns HTML instead of JSON for all database operations). The privilege-escalation fix migration is prepared but not yet applied to the live database.
 
 Recommended Next Step
 
-MVP is complete and the re-login bug is fixed. Future work: email/SMS notifications, offline sync, Stripe payments, QuickBooks, Google Maps, and other features listed in MASTER_SPEC.md Future Features.
+Apply the pending migration "20260731130000_fix_profile_self_update_escalation" via mcp__supabase__apply_migration once the Supabase MCP server is back online. This closes the profiles self-update privilege-escalation bug.
 
 ---
 
