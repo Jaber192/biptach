@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return p;
   }
 
-  async function loadProfileOffline(uid: string): Promise<Profile | null> {
+  async function loadProfileOffline(uid: string, sessionUser?: any): Promise<Profile | null> {
     try {
       const cached = await indexedDBManager.getAll<Profile>("profiles");
       const p = cached.find(profile => profile.id === uid);
@@ -76,6 +76,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
         return p;
+      }
+      
+      // Profile not in IndexedDB — construct minimal fallback from session data
+      if (sessionUser) {
+        console.log('[Auth] Profile not in IndexedDB, constructing fallback from session');
+        const fallbackProfile: Profile = {
+          id: uid,
+          name: sessionUser.user_metadata?.name || sessionUser.email || 'User',
+          role: 'owner', // Default role for offline fallback
+          phone: sessionUser.phone || null,
+          is_active: true,
+          company_id: null, // Will be set if we can find it
+          created_at: sessionUser.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setProfile(fallbackProfile);
+        return fallbackProfile;
       }
     } catch (e) {
       console.error('Failed to load profile from cache:', e);
@@ -101,8 +118,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (parsed?.access_token && parsed?.user) {
             console.log('[Auth] Restoring offline session for user:', parsed.user.id);
             setSession(parsed);
-            // Load profile from IndexedDB cache when offline
-            loadProfileOffline(parsed.user.id);
+            // Load profile from IndexedDB cache when offline, with session user as fallback
+            loadProfileOffline(parsed.user.id, parsed.user);
           } else {
             console.warn('[Auth] Stored session missing access_token or user:', parsed);
           }
