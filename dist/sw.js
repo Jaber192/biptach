@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biptach-v1';
+const CACHE_NAME = 'biptach-v2';
 
 // Assets to pre-cache on install for immediate offline support
 const PRECACHE_URLS = [
@@ -9,9 +9,15 @@ const PRECACHE_URLS = [
 
 // Install: pre-cache essential assets and skip waiting to activate immediately
 self.addEventListener('install', event => {
+  console.log('[SW] Install event fired');
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(PRECACHE_URLS);
+      console.log('[SW] Pre-caching:', PRECACHE_URLS);
+      return cache.addAll(PRECACHE_URLS).then(() => {
+        console.log('[SW] Pre-caching succeeded');
+      }).catch(err => {
+        console.error('[SW] Pre-caching FAILED:', err);
+      });
     })
   );
   self.skipWaiting();

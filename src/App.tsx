@@ -4,6 +4,7 @@ import { NotificationsProvider } from "./hooks/useNotifications";
 import { OfflineProvider } from "./hooks/useOfflineProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
+import { SWDebugPanel } from "./components/SWDebugPanel";
 import { Navbar } from "./components/Navbar";
 import { Hero } from "./components/Hero";
 import { Features } from "./components/Features";
@@ -70,6 +71,7 @@ export default function App() {
       <OfflineProvider>
       <NotificationsProvider>
       <BrowserRouter>
+        <SWDebugPanel />
         <Routes>
           <Route index element={<AuthRedirect />} />
           <Route path="/signin" element={<SignInPage />} />
