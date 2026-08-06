@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
-import { enqueueOperation, isOnline } from "../lib/offlineQueue";
+import { enqueueOperation, getPendingCreates, isOnline } from "../lib/offlineQueue";
 import type { WorkOrder, WorkOrderInput } from "../types";
 
 export type WorkOrderPatch = Partial<
@@ -118,6 +118,18 @@ export function useWorkOrders() {
           // Update cache
           if (rows.length > 0) {
             await indexedDBManager.seedStore("work_orders", rows);
+          }
+
+          // Merge in pending offline creates that haven't been synced yet
+          const pendingCreates = await getPendingCreates("work_orders");
+          if (pendingCreates.length > 0) {
+            const serverIds = new Set(rows.map(r => r.id));
+            const offlineItems = pendingCreates
+              .filter(op => !serverIds.has(op.data.id as string))
+              .map(op => rowToWorkOrder(op.data as WorkOrderRow));
+            if (offlineItems.length > 0) {
+              setWorkOrders(prev => [...offlineItems, ...prev]);
+            }
           }
         }
       } else if (!cancelled) {

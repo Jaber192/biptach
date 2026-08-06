@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
-import { enqueueOperation, isOnline } from "../lib/offlineQueue";
+import { enqueueOperation, getPendingCreates, isOnline } from "../lib/offlineQueue";
 import type { Technician, TechnicianInput } from "../types";
 
 type TechnicianRow = {
@@ -85,6 +85,18 @@ export function useTechnicians() {
 
           if (rows.length > 0) {
             await indexedDBManager.seedStore("technicians", rows);
+          }
+
+          // Merge in pending offline creates that haven't been synced yet
+          const pendingCreates = await getPendingCreates("technicians");
+          if (pendingCreates.length > 0) {
+            const serverIds = new Set(rows.map(r => r.id));
+            const offlineItems = pendingCreates
+              .filter(op => !serverIds.has(op.data.id as string))
+              .map(op => rowToTechnician(op.data as TechnicianRow));
+            if (offlineItems.length > 0) {
+              setTechnicians(prev => [...prev, ...offlineItems]);
+            }
           }
         }
       } else if (!cancelled) {

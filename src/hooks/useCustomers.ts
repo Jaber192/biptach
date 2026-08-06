@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
-import { enqueueOperation, isOnline } from "../lib/offlineQueue";
+import { enqueueOperation, getPendingCreates, isOnline } from "../lib/offlineQueue";
 import type { Customer, CustomerInput } from "../types";
 
 type CustomerRow = {
@@ -85,6 +85,18 @@ export function useCustomers() {
 
           if (rows.length > 0) {
             await indexedDBManager.seedStore("customers", rows);
+          }
+
+          // Merge in pending offline creates that haven't been synced yet
+          const pendingCreates = await getPendingCreates("customers");
+          if (pendingCreates.length > 0) {
+            const serverIds = new Set(rows.map(r => r.id));
+            const offlineItems = pendingCreates
+              .filter(op => !serverIds.has(op.data.id as string))
+              .map(op => rowToCustomer(op.data as CustomerRow));
+            if (offlineItems.length > 0) {
+              setCustomers(prev => [...offlineItems, ...prev]);
+            }
           }
         }
       } else if (!cancelled) {

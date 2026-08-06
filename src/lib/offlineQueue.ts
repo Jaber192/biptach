@@ -30,3 +30,17 @@ export async function enqueueOperation(
 export function isOnline(): boolean {
   return navigator.onLine;
 }
+
+/**
+ * Get pending create operations for a specific entity from the sync queue.
+ * Used to merge offline-created items into server data when coming back online.
+ */
+export async function getPendingCreates(entity: OfflineOperation["entity"]): Promise<OfflineOperation[]> {
+  try {
+    const allOps = await indexedDBManager.getQueueOperations<OfflineOperation>();
+    return allOps.filter(op => op.entity === entity && op.type === "create" && op.status === "pending");
+  } catch (error) {
+    console.error("Failed to get pending creates:", error);
+    return [];
+  }
+}
