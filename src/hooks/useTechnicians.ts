@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
-import { enqueueOperation, getPendingCreates, isOnline } from "../lib/offlineQueue";
+import { enqueueOperation, getCurrentUserContext, getPendingCreates, isOnline } from "../lib/offlineQueue";
 import type { Technician, TechnicianInput } from "../types";
 
 type TechnicianRow = {
@@ -147,12 +147,13 @@ export function useTechnicians() {
       await indexedDBManager.add("technicians", row).catch(() => {});
       return rowToTechnician(row);
     } else {
+      const { userId, companyId } = getCurrentUserContext();
       const tempId = crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 15);
       const now = new Date().toISOString();
       const row: TechnicianRow = {
         id: tempId,
-        user_id: "",
-        company_id: "",
+        user_id: userId,
+        company_id: companyId,
         ...inputToRow(input),
         created_at: now,
         updated_at: now,

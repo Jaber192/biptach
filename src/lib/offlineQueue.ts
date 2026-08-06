@@ -32,6 +32,35 @@ export function isOnline(): boolean {
 }
 
 /**
+ * Get the current user's ID and company_id from localStorage.
+ * Used to populate foreign keys when creating rows offline.
+ */
+export function getCurrentUserContext(): { userId: string; companyId: string } {
+  try {
+    const authData = localStorage.getItem('biptach-auth');
+    const profileData = localStorage.getItem('biptach-profile');
+    
+    let userId = '';
+    let companyId = '';
+    
+    if (authData) {
+      const parsed = JSON.parse(authData);
+      userId = parsed?.user?.id || '';
+    }
+    
+    if (profileData) {
+      const parsed = JSON.parse(profileData);
+      companyId = parsed?.company_id || '';
+    }
+    
+    return { userId, companyId };
+  } catch (error) {
+    console.error('Failed to get user context from localStorage:', error);
+    return { userId: '', companyId: '' };
+  }
+}
+
+/**
  * Get pending create operations for a specific entity from the sync queue.
  * Used to merge offline-created items into server data when coming back online.
  */

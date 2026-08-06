@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
-import { enqueueOperation, getPendingCreates, isOnline } from "../lib/offlineQueue";
+import { enqueueOperation, getCurrentUserContext, getPendingCreates, isOnline } from "../lib/offlineQueue";
 import type { WorkOrder, WorkOrderInput } from "../types";
 
 export type WorkOrderPatch = Partial<
@@ -182,12 +182,13 @@ export function useWorkOrders() {
       return rowToWorkOrder(row);
     } else {
       // Offline: create locally and enqueue
+      const { userId, companyId } = getCurrentUserContext();
       const tempId = crypto.randomUUID?.() ?? Math.random().toString(36).substring(2, 15);
       const now = new Date().toISOString();
       const row: WorkOrderRow = {
         id: tempId,
-        user_id: "",
-        company_id: "",
+        user_id: userId,
+        company_id: companyId,
         ...inputToRow(input),
         clock_in_time: null,
         clock_out_time: null,
