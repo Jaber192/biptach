@@ -184,6 +184,7 @@ export function useWorkOrders() {
       }
       const row = data as WorkOrderRow;
       await indexedDBManager.add("work_orders", row).catch(() => {});
+      setWorkOrders((prev) => [rowToWorkOrder(row), ...prev]);
       return rowToWorkOrder(row);
     } else {
       // Offline: create locally and enqueue
@@ -224,6 +225,9 @@ export function useWorkOrders() {
       else {
         const row = { id, ...inputToRow(input), updated_at: new Date().toISOString() };
         await indexedDBManager.update("work_orders", id, row).catch(() => {});
+        setWorkOrders((prev) =>
+          prev.map((w) => (w.id === id ? { ...w, ...input, updated_at: new Date().toISOString() } : w)),
+        );
       }
     } else {
       const patch = inputToRow(input);
@@ -249,6 +253,9 @@ export function useWorkOrders() {
       if (error) console.error("Failed to patch work order:", error.message);
       else {
         await indexedDBManager.update("work_orders", id, { ...rowPatch, updated_at: new Date().toISOString() }).catch(() => {});
+        setWorkOrders((prev) =>
+          prev.map((w) => (w.id === id ? { ...w, ...patch, updated_at: new Date().toISOString() } : w)),
+        );
       }
     } else {
       await indexedDBManager.update("work_orders", id, { ...rowPatch, updated_at: new Date().toISOString() }).catch(() => {});
@@ -269,6 +276,7 @@ export function useWorkOrders() {
       if (error) console.error("Failed to delete work order:", error.message);
       else {
         await indexedDBManager.delete("work_orders", id).catch(() => {});
+        setWorkOrders((prev) => prev.filter((w) => w.id !== id));
       }
     } else {
       await indexedDBManager.delete("work_orders", id).catch(() => {});

@@ -145,6 +145,7 @@ export function useTechnicians() {
       }
       const row = data as TechnicianRow;
       await indexedDBManager.add("technicians", row).catch(() => {});
+      setTechnicians((prev) => [...prev, rowToTechnician(row)]);
       return rowToTechnician(row);
     } else {
       const { userId, companyId } = getCurrentUserContext();
@@ -179,6 +180,9 @@ export function useTechnicians() {
       else {
         const row = { id, ...inputToRow(input), updated_at: new Date().toISOString() };
         await indexedDBManager.update("technicians", id, row).catch(() => {});
+        setTechnicians((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, ...input, updated_at: new Date().toISOString() } : t)),
+        );
       }
     } else {
       const patch = inputToRow(input);
@@ -200,6 +204,7 @@ export function useTechnicians() {
       if (error) console.error("Failed to delete technician:", error.message);
       else {
         await indexedDBManager.delete("technicians", id).catch(() => {});
+        setTechnicians((prev) => prev.filter((t) => t.id !== id));
       }
     } else {
       await indexedDBManager.delete("technicians", id).catch(() => {});

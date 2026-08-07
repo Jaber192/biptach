@@ -150,6 +150,7 @@ export function useCustomers() {
       }
       const row = data as CustomerRow;
       await indexedDBManager.add("customers", row).catch(() => {});
+      setCustomers((prev) => [rowToCustomer(row), ...prev]);
       return rowToCustomer(row);
     } else {
       const { userId, companyId } = getCurrentUserContext();
@@ -184,6 +185,9 @@ export function useCustomers() {
       else {
         const row = { id, ...inputToRow(input), updated_at: new Date().toISOString() };
         await indexedDBManager.update("customers", id, row).catch(() => {});
+        setCustomers((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, ...input, updated_at: new Date().toISOString() } : c)),
+        );
       }
     } else {
       const patch = inputToRow(input);
@@ -205,6 +209,7 @@ export function useCustomers() {
       if (error) console.error("Failed to delete customer:", error.message);
       else {
         await indexedDBManager.delete("customers", id).catch(() => {});
+        setCustomers((prev) => prev.filter((c) => c.id !== id));
       }
     } else {
       await indexedDBManager.delete("customers", id).catch(() => {});
