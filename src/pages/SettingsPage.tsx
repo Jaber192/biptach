@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { User, Users, Save, Check, Shield, Loader as Loader2, Building2, Mail, Plus, Trash2, Copy, Wrench } from "lucide-react";
+import { User, Users, Save, Check, Shield, Loader as Loader2, Building2, Mail, Plus, Trash2, Copy, Wrench, RefreshCw } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { TECHNICIAN_COLORS } from "../hooks/useTechnicians";
@@ -102,6 +102,7 @@ function ProfileSettings({ profile }: { profile: Profile }) {
   const [isTechnician, setIsTechnician] = useState(!!profile.owner_technician_id);
   const [toggling, setToggling] = useState(false);
   const [toggleError, setToggleError] = useState<string | null>(null);
+  const [toggleNotice, setToggleNotice] = useState<"on" | "off" | null>(null);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -126,6 +127,7 @@ function ProfileSettings({ profile }: { profile: Profile }) {
   async function handleTechnicianToggle(enabled: boolean) {
     setToggling(true);
     setToggleError(null);
+    setToggleNotice(null);
 
     try {
       if (enabled) {
@@ -172,7 +174,20 @@ function ProfileSettings({ profile }: { profile: Profile }) {
           .eq("id", profile.id);
         if (linkError) throw linkError;
 
+        // Keep the cached profile in sync so the refreshed (or offline) session sees the change
+        try {
+          const cached = localStorage.getItem("biptach-profile");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            parsed.owner_technician_id = techId;
+            localStorage.setItem("biptach-profile", JSON.stringify(parsed));
+          }
+        } catch {
+          // Cache sync is best-effort
+        }
+
         setIsTechnician(true);
+        setToggleNotice("on");
       } else {
         // Deactivate technician record
         if (profile.owner_technician_id) {
@@ -190,7 +205,20 @@ function ProfileSettings({ profile }: { profile: Profile }) {
           .eq("id", profile.id);
         if (unlinkError) throw unlinkError;
 
+        // Keep the cached profile in sync so the refreshed (or offline) session sees the change
+        try {
+          const cached = localStorage.getItem("biptach-profile");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            parsed.owner_technician_id = null;
+            localStorage.setItem("biptach-profile", JSON.stringify(parsed));
+          }
+        } catch {
+          // Cache sync is best-effort
+        }
+
         setIsTechnician(false);
+        setToggleNotice("off");
       }
     } catch (err: any) {
       setToggleError(err.message || "Failed to update technician status");
@@ -295,6 +323,22 @@ function ProfileSettings({ profile }: { profile: Profile }) {
 
           {toggleError && (
             <p className="mt-3 text-sm text-error-600 dark:text-error-400">{toggleError}</p>
+          )}
+
+          {toggleNotice && (
+            <div className="mt-3 flex flex-col gap-3 rounded-lg border border-accent-300 bg-accent-100 px-4 py-3 dark:border-accent-900 dark:bg-accent-950 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-medium text-accent-700 dark:text-accent-300">
+                Technician mode turned {toggleNotice === "on" ? "ON" : "OFF"}. Refresh the page to apply the change.
+              </p>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary-700"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Reload now
+              </button>
+            </div>
           )}
         </div>
       )}
