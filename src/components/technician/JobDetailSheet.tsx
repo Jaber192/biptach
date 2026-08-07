@@ -91,6 +91,7 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
   }
 
   function handleStart() {
+    alert("handleStart called! status=" + workOrder!.status + " id=" + workOrder!.id);
     const now = new Date().toISOString();
     patch({ status: "in_progress" as WorkOrderStatus, clockInTime: workOrder!.clockInTime ?? now }, "Starting");
     push({
