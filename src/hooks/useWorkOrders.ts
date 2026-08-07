@@ -262,18 +262,22 @@ export function useWorkOrders() {
   }, []);
 
   const patchWorkOrder = useCallback(async (id: string, patch: WorkOrderPatch) => {
+    console.log("[useWorkOrders] patchWorkOrder called, id:", id, "patch:", patch, "isOnline:", isOnline());
     const rowPatch = patchToRow(patch);
     if (isOnline()) {
       const { error } = await supabase
         .from("work_orders")
         .update(rowPatch)
         .eq("id", id);
-      if (error) console.error("Failed to patch work order:", error.message);
-      else {
+      if (error) {
+        console.error("Failed to patch work order:", error.message);
+      } else {
+        console.log("[useWorkOrders] patchWorkOrder: Supabase update success");
         await indexedDBManager.update("work_orders", id, { ...rowPatch, updated_at: new Date().toISOString() }).catch(() => {});
-        setWorkOrders((prev) =>
-          prev.map((w) => (w.id === id ? { ...w, ...patch, updated_at: new Date().toISOString() } : w)),
-        );
+        setWorkOrders((prev) => {
+          console.log("[useWorkOrders] patchWorkOrder: updating state, prev length:", prev.length, "id:", id);
+          return prev.map((w) => (w.id === id ? { ...w, ...patch, updated_at: new Date().toISOString() } : w));
+        });
       }
     } else {
       await indexedDBManager.update("work_orders", id, { ...rowPatch, updated_at: new Date().toISOString() }).catch(() => {});
