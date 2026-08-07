@@ -148,18 +148,28 @@ export function useWorkOrders() {
     const channel = supabase
       .channel("work-orders-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "work_orders" }, (payload) => {
+        console.log("[useWorkOrders] Real-time event:", payload.eventType, "id:", (payload.new as any)?.id || (payload.old as any)?.id);
         if (payload.eventType === "INSERT" && payload.new) {
           const row = payload.new as WorkOrderRow;
-          setWorkOrders((prev) => [rowToWorkOrder(row), ...prev]);
+          setWorkOrders((prev) => {
+            console.log("[useWorkOrders] Real-time INSERT: prev length:", prev.length, "new id:", row.id);
+            return [rowToWorkOrder(row), ...prev];
+          });
           indexedDBManager.add("work_orders", row).catch(() => {});
         } else if (payload.eventType === "UPDATE" && payload.new) {
           const row = payload.new as WorkOrderRow;
           const updated = rowToWorkOrder(row);
-          setWorkOrders((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+          setWorkOrders((prev) => {
+            console.log("[useWorkOrders] Real-time UPDATE: prev length:", prev.length, "updated id:", row.id);
+            return prev.map((w) => (w.id === updated.id ? updated : w));
+          });
           indexedDBManager.update("work_orders", row.id, row).catch(() => {});
         } else if (payload.eventType === "DELETE" && payload.old) {
           const row = payload.old as WorkOrderRow;
-          setWorkOrders((prev) => prev.filter((w) => w.id !== row.id));
+          setWorkOrders((prev) => {
+            console.log("[useWorkOrders] Real-time DELETE: prev length:", prev.length, "deleted id:", row.id);
+            return prev.filter((w) => w.id !== row.id);
+          });
           indexedDBManager.delete("work_orders", row.id).catch(() => {});
         }
       })
@@ -172,6 +182,7 @@ export function useWorkOrders() {
   }, []);
 
   const addWorkOrder = useCallback(async (input: WorkOrderInput) => {
+    console.log("[useWorkOrders] addWorkOrder called, isOnline:", isOnline());
     if (isOnline()) {
       const { data, error } = await supabase
         .from("work_orders")
@@ -183,8 +194,12 @@ export function useWorkOrders() {
         return null;
       }
       const row = data as WorkOrderRow;
+      console.log("[useWorkOrders] addWorkOrder: Supabase insert success, id:", row.id);
       await indexedDBManager.add("work_orders", row).catch(() => {});
-      setWorkOrders((prev) => [rowToWorkOrder(row), ...prev]);
+      setWorkOrders((prev) => {
+        console.log("[useWorkOrders] addWorkOrder: updating state, prev length:", prev.length);
+        return [rowToWorkOrder(row), ...prev];
+      });
       return rowToWorkOrder(row);
     } else {
       // Offline: create locally and enqueue
@@ -216,6 +231,7 @@ export function useWorkOrders() {
   }, []);
 
   const updateWorkOrder = useCallback(async (id: string, input: WorkOrderInput) => {
+    console.log("[useWorkOrders] updateWorkOrder called, id:", id, "isOnline:", isOnline());
     if (isOnline()) {
       const { error } = await supabase
         .from("work_orders")
@@ -223,11 +239,13 @@ export function useWorkOrders() {
         .eq("id", id);
       if (error) console.error("Failed to update work order:", error.message);
       else {
+        console.log("[useWorkOrders] updateWorkOrder: Supabase update success");
         const row = { id, ...inputToRow(input), updated_at: new Date().toISOString() };
         await indexedDBManager.update("work_orders", id, row).catch(() => {});
-        setWorkOrders((prev) =>
-          prev.map((w) => (w.id === id ? { ...w, ...input, updated_at: new Date().toISOString() } : w)),
-        );
+        setWorkOrders((prev) => {
+          console.log("[useWorkOrders] updateWorkOrder: updating state, prev length:", prev.length);
+          return prev.map((w) => (w.id === id ? { ...w, ...input, updated_at: new Date().toISOString() } : w));
+        });
       }
     } else {
       const patch = inputToRow(input);
