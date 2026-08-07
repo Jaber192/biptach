@@ -16,19 +16,20 @@ export function useOfflineQueue() {
   const [isLoaded, setIsLoaded] = useState(false);
 
   // Load queue from IndexedDB on mount
-  useEffect(() => {
-    const loadQueue = async () => {
-      try {
-        const ops = await indexedDBManager.getQueueOperations<OfflineOperation>();
-        setQueue(ops);
-      } catch (error) {
-        console.error("Failed to load offline queue:", error);
-      } finally {
-        setIsLoaded(true);
-      }
-    };
-    loadQueue();
+  const loadQueue = useCallback(async () => {
+    try {
+      const ops = await indexedDBManager.getQueueOperations<OfflineOperation>();
+      setQueue(ops);
+    } catch (error) {
+      console.error("Failed to load offline queue:", error);
+    } finally {
+      setIsLoaded(true);
+    }
   }, []);
+
+  useEffect(() => {
+    loadQueue();
+  }, [loadQueue]);
 
   // Monitor online/offline status
   useEffect(() => {
@@ -71,6 +72,11 @@ export function useOfflineQueue() {
     setQueue((prev) =>
       prev.map((op) => (op.id === id ? { ...op, status: "syncing" as const } : op)),
     );
+    try {
+      await indexedDBManager.updateQueueOperation(id, { status: "syncing" });
+    } catch (error) {
+      console.error("Failed to mark operation as syncing in IndexedDB:", error);
+    }
   }, []);
 
   const markAsSynced = useCallback(async (id: string): Promise<void> => {
@@ -88,6 +94,11 @@ export function useOfflineQueue() {
     setQueue((prev) =>
       prev.map((op) => (op.id === id ? { ...op, status: "failed" as const } : op)),
     );
+    try {
+      await indexedDBManager.updateQueueOperation(id, { status: "failed" });
+    } catch (error) {
+      console.error("Failed to mark operation as failed in IndexedDB:", error);
+    }
   }, []);
 
   const clearCompleted = useCallback(async (): Promise<void> => {
@@ -104,5 +115,6 @@ export function useOfflineQueue() {
     markAsSynced,
     markAsFailed,
     clearCompleted,
+    reloadQueue: loadQueue,
   };
 }

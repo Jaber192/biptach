@@ -15,6 +15,7 @@ export function useSyncQueue() {
     markAsSynced,
     markAsFailed,
     clearCompleted,
+    reloadQueue,
   } = useOfflineQueue();
 
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -26,6 +27,8 @@ export function useSyncQueue() {
 
   const syncingRef = useRef(false);
 
+  const MAX_RETRIES = 3;
+
   const syncOperations = useCallback(async () => {
     if (!isOnline || !isLoaded || syncingRef.current) return;
 
@@ -34,8 +37,14 @@ export function useSyncQueue() {
     const { userId, companyId } = getCurrentUserContext();
 
     // Reset failed operations back to pending and patch with correct user context
+    let hasRetried = false;
     for (const op of allOps) {
       if (op.status === "failed") {
+        const retryCount = (op as any).retry_count || 0;
+        if (retryCount >= MAX_RETRIES) {
+          console.warn(`Operation ${op.id} exceeded max retries, skipping`);
+          continue;
+        }
         if (op.type === "create" && op.data) {
           if (userId && !op.data.user_id) {
             op.data.user_id = userId;
@@ -45,8 +54,15 @@ export function useSyncQueue() {
           }
         }
         op.status = "pending";
+        (op as any).retry_count = retryCount + 1;
         await indexedDBManager.updateQueueOperation(op.id, op);
+        hasRetried = true;
       }
+    }
+
+    // Reload queue state if we retried anything
+    if (hasRetried) {
+      await reloadQueue();
     }
 
     // Reload to get the updated state
@@ -226,6 +242,6 @@ export function useSyncQueue() {
     isSyncing,
     syncProgress,
     triggerSync,
-    queueLength: queue.filter((op) => op.status === "pending").length,
+    queueLength: queue.filter((op) => op.status === "pending" || op.status === "failed").length,
   };
 }
