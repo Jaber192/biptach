@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 import type { UserRole } from "../types";
 import { Loader as Loader2 } from "lucide-react";
@@ -13,6 +13,19 @@ export function ProtectedRoute({
 }) {
   const { session, profile, loading } = useAuth();
   const location = useLocation();
+
+  useEffect(() => {
+    console.log(
+      "[DataWipe] ProtectedRoute render — loading:",
+      loading,
+      "| session:",
+      session ? "present" : "NULL",
+      "| profile:",
+      profile ? profile.role : "NULL",
+      "| path:",
+      location.pathname,
+    );
+  }, [loading, session, profile, location.pathname]);
 
   if (loading) {
     return (

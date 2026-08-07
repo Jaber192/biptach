@@ -190,8 +190,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // storage is read, which can arrive with null and overwrite the real
     // session, causing a false redirect to /signin on every page reload.
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      console.log(
+        "[DataWipe] auth event:",
+        event,
+        "| session:",
+        newSession ? "present" : "NULL",
+        "| time:",
+        new Date().toLocaleTimeString(),
+      );
       if (event === "INITIAL_SESSION") return;
       (async () => {
+        if (!newSession) {
+          console.warn("[DataWipe] session set to NULL by event:", event);
+        }
         setSession(newSession);
         if (newSession?.user) {
           await loadProfile(newSession.user.id);

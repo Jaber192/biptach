@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biptach-v7';
+const CACHE_NAME = 'biptach-v8';
 
 // Static assets to always pre-cache
 const STATIC_URLS = [

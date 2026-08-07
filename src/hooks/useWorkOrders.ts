@@ -95,6 +95,7 @@ export function useWorkOrders() {
       // 1. Load from IndexedDB cache first (instant, works offline)
       try {
         const cached = await indexedDBManager.getAll<WorkOrderRow>("work_orders");
+        console.log("[DataWipe] work_orders cache rows:", cached.length);
         if (!cancelled && cached.length > 0) {
           setWorkOrders(sortByNewest(cached.map(rowToWorkOrder)));
           setLoading(false);
@@ -112,7 +113,7 @@ export function useWorkOrders() {
 
         if (!cancelled) {
           if (error) {
-            console.error("Failed to load work orders:", error.message);
+            console.error("[DataWipe] fetch work_orders FAILED:", error.message);
           }
           const rows = (data as WorkOrderRow[] | null) ?? [];
           let merged = rows.map(rowToWorkOrder);
@@ -134,6 +135,15 @@ export function useWorkOrders() {
             }
           }
 
+          console.log(
+            "[DataWipe] fetch work_orders ok. server rows:",
+            rows.length,
+            "| merged:",
+            merged.length,
+          );
+          if (merged.length === 0) {
+            console.warn("[DataWipe] about to OVERWRITE work orders state with EMPTY list");
+          }
           setWorkOrders(sortByNewest(merged));
           setLoading(false);
         }
