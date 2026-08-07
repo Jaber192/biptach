@@ -33,7 +33,8 @@ export function NotificationsPage() {
   const navigate = useNavigate();
 
   const role = profile?.role ?? "technician";
-  const visible = notifications.filter((n) => n.recipientRole === role);
+  // Owners see all notifications; others only see notifications matching their role
+  const visible = notifications.filter((n) => role === "owner" || n.recipientRole === role);
   const filtered = filter === "unread" ? visible.filter((n) => !n.read) : visible;
 
   function handleClick(n: AppNotification) {
