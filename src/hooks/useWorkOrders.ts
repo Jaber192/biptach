@@ -88,12 +88,15 @@ export function useWorkOrders() {
   useEffect(() => {
     let cancelled = false;
 
+    const sortByNewest = (list: WorkOrder[]) =>
+      [...list].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
     async function load() {
       // 1. Load from IndexedDB cache first (instant, works offline)
       try {
         const cached = await indexedDBManager.getAll<WorkOrderRow>("work_orders");
         if (!cancelled && cached.length > 0) {
-          setWorkOrders(cached.map(rowToWorkOrder));
+          setWorkOrders(sortByNewest(cached.map(rowToWorkOrder)));
           setLoading(false);
         }
       } catch (e) {
@@ -112,8 +115,7 @@ export function useWorkOrders() {
             console.error("Failed to load work orders:", error.message);
           }
           const rows = (data as WorkOrderRow[] | null) ?? [];
-          setWorkOrders(rows.map(rowToWorkOrder));
-          setLoading(false);
+          let merged = rows.map(rowToWorkOrder);
 
           // Update cache
           if (rows.length > 0) {
@@ -128,9 +130,12 @@ export function useWorkOrders() {
               .filter(op => !serverIds.has(op.data.id as string))
               .map(op => rowToWorkOrder(op.data as WorkOrderRow));
             if (offlineItems.length > 0) {
-              setWorkOrders(prev => [...offlineItems, ...prev]);
+              merged = [...offlineItems, ...merged];
             }
           }
+
+          setWorkOrders(sortByNewest(merged));
+          setLoading(false);
         }
       } else if (!cancelled) {
         setLoading(false);
