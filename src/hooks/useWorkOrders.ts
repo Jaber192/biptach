@@ -245,29 +245,37 @@ export function useWorkOrders() {
 
   const patchWorkOrder = useCallback(async (id: string, patch: WorkOrderPatch) => {
     const rowPatch = patchToRow(patch);
+    const now = new Date().toISOString();
+
+    // 1. Optimistic: update React state + IndexedDB immediately so the UI
+    //    reflects the change instantly (critical for large photo payloads).
+    setWorkOrders((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, ...patch, updated_at: now } : w)),
+    );
+    await indexedDBManager
+      .update("work_orders", id, { ...rowPatch, updated_at: now })
+      .catch(() => {});
+
+    // 2. Sync to Supabase in the background; queue for retry on failure.
     if (isOnline()) {
       const { error } = await supabase
         .from("work_orders")
         .update(rowPatch)
         .eq("id", id);
       if (error) {
-        console.error("Failed to patch work order:", error.message);
-      } else {
-        await indexedDBManager.update("work_orders", id, { ...rowPatch, updated_at: new Date().toISOString() }).catch(() => {});
-        setWorkOrders((prev) =>
-          prev.map((w) => (w.id === id ? { ...w, ...patch, updated_at: new Date().toISOString() } : w)),
-        );
+        console.error("Failed to patch work order (queued for retry):", error.message);
+        await enqueueOperation({
+          type: "update",
+          entity: "work_orders",
+          data: { id, ...rowPatch } as Record<string, unknown>,
+        });
       }
     } else {
-      await indexedDBManager.update("work_orders", id, { ...rowPatch, updated_at: new Date().toISOString() }).catch(() => {});
       await enqueueOperation({
         type: "update",
         entity: "work_orders",
         data: { id, ...rowPatch } as Record<string, unknown>,
       });
-      setWorkOrders((prev) =>
-        prev.map((w) => (w.id === id ? { ...w, ...patch, updated_at: new Date().toISOString() } : w)),
-      );
     }
   }, []);
 
