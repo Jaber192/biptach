@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
 import { enqueueOperation, getCurrentUserContext, getPendingCreates, isOnline } from "../lib/offlineQueue";
-import { debugLog } from "../lib/debugBanner";
 import type { Customer, CustomerInput } from "../types";
 
 type CustomerRow = {
@@ -85,7 +84,7 @@ export function useCustomers() {
         if (!cancelled) {
           if (error) {
             // Transient failure: keep cached data instead of wiping the list.
-            debugLog(`fetch customers FAILED: ${error.message} — keeping cached data`, "warn");
+            console.warn(`fetch customers failed (${error.message}) — keeping cached data`);
             setLoading(false);
             return;
           }
@@ -95,7 +94,7 @@ export function useCustomers() {
           // Never wipe good cached data with an empty server response
           // (transient issue, e.g. expired JWT → RLS returns 0 rows).
           if (rows.length === 0 && hadCache) {
-            debugLog("fetch customers returned EMPTY but cache has data — keeping cache", "warn");
+            console.warn("fetch customers returned empty but cache has data — keeping cache");
             setLoading(false);
             return;
           }

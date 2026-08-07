@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "../lib/supabase";
 import type { AuthContextValue, Company, Profile } from "../types";
-import { debugLog } from "../lib/debugBanner";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -191,15 +190,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // storage is read, which can arrive with null and overwrite the real
     // session, causing a false redirect to /signin on every page reload.
     const { data: listener } = supabase.auth.onAuthStateChange((event, newSession) => {
-      debugLog(
-        `auth event: ${event} | session: ${newSession ? "present" : "NULL"}`,
-        newSession ? "info" : "warn",
-      );
       if (event === "INITIAL_SESSION") return;
       (async () => {
-        if (!newSession) {
-          debugLog(`session set to NULL by event: ${event}`, "error");
-        }
         setSession(newSession);
         if (newSession?.user) {
           await loadProfile(newSession.user.id);

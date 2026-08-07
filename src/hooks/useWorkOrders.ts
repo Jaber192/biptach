@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
 import { enqueueOperation, getCurrentUserContext, getPendingCreates, isOnline } from "../lib/offlineQueue";
-import { debugLog } from "../lib/debugBanner";
 import type { WorkOrder, WorkOrderInput } from "../types";
 
 export type WorkOrderPatch = Partial<
@@ -98,7 +97,6 @@ export function useWorkOrders() {
       // 1. Load from IndexedDB cache first (instant, works offline)
       try {
         const cached = await indexedDBManager.getAll<WorkOrderRow>("work_orders");
-        debugLog(`work_orders cache rows: ${cached.length}`);
         if (!cancelled && cached.length > 0) {
           hadCache = true;
           setWorkOrders(sortByNewest(cached.map(rowToWorkOrder)));
@@ -119,7 +117,7 @@ export function useWorkOrders() {
           if (error) {
             // Transient failure (network blip, token refresh race): keep the
             // cached data instead of wiping the list.
-            debugLog(`fetch work_orders FAILED: ${error.message} — keeping cached data`, "warn");
+            console.warn(`fetch work_orders failed (${error.message}) — keeping cached data`);
             setLoading(false);
             return;
           }
@@ -130,7 +128,7 @@ export function useWorkOrders() {
           // is almost always transient (e.g. expired JWT makes RLS return 0
           // rows). Never wipe good data with an empty result.
           if (rows.length === 0 && hadCache) {
-            debugLog("fetch work_orders returned EMPTY but cache has data — keeping cache", "warn");
+            console.warn("fetch work_orders returned empty but cache has data — keeping cache");
             setLoading(false);
             return;
           }
@@ -154,7 +152,6 @@ export function useWorkOrders() {
             }
           }
 
-          debugLog(`fetch work_orders ok. server rows: ${rows.length} | merged: ${merged.length}`);
           setWorkOrders(sortByNewest(merged));
           setLoading(false);
         }

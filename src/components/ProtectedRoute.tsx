@@ -1,9 +1,8 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 import type { UserRole } from "../types";
 import { Loader as Loader2 } from "lucide-react";
-import { debugLog } from "../lib/debugBanner";
 
 export function ProtectedRoute({
   children,
@@ -14,13 +13,6 @@ export function ProtectedRoute({
 }) {
   const { session, profile, loading } = useAuth();
   const location = useLocation();
-
-  useEffect(() => {
-    debugLog(
-      `ProtectedRoute — loading: ${loading} | session: ${session ? "present" : "NULL"} | profile: ${profile ? profile.role : "NULL"} | ${location.pathname}`,
-      !loading && !session ? "error" : "info",
-    );
-  }, [loading, session, profile, location.pathname]);
 
   if (loading) {
     return (

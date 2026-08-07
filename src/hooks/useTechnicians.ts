@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
 import { enqueueOperation, getCurrentUserContext, getPendingCreates, isOnline } from "../lib/offlineQueue";
-import { debugLog } from "../lib/debugBanner";
 import type { Technician, TechnicianInput } from "../types";
 
 type TechnicianRow = {
@@ -82,7 +81,7 @@ export function useTechnicians() {
         if (!cancelled) {
           if (error) {
             // Transient failure: keep cached data instead of wiping the list.
-            debugLog(`fetch technicians FAILED: ${error.message} — keeping cached data`, "warn");
+            console.warn(`fetch technicians failed (${error.message}) — keeping cached data`);
             setLoading(false);
             return;
           }
@@ -92,7 +91,7 @@ export function useTechnicians() {
           // Never wipe good cached data with an empty server response
           // (transient issue, e.g. expired JWT → RLS returns 0 rows).
           if (rows.length === 0 && hadCache) {
-            debugLog("fetch technicians returned EMPTY but cache has data — keeping cache", "warn");
+            console.warn("fetch technicians returned empty but cache has data — keeping cache");
             setLoading(false);
             return;
           }
