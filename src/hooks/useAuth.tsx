@@ -115,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: sessionUser.phone || null,
         is_active: true,
         company_id: null,
+        owner_technician_id: null,
         created_at: sessionUser.created_at || new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

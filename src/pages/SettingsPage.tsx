@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { User, Users, Save, Check, Shield, Loader as Loader2, Building2, Mail, Plus, Trash2, Copy } from "lucide-react";
+import { User, Users, Save, Check, Shield, Loader as Loader2, Building2, Mail, Plus, Trash2, Copy, Wrench } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
+import { TECHNICIAN_COLORS } from "../hooks/useTechnicians";
 import type { Invitation, InvitationRole, Profile, UserRole } from "../types";
 
 type ProfileRow = Profile;
@@ -98,6 +99,9 @@ function ProfileSettings({ profile }: { profile: Profile }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isTechnician, setIsTechnician] = useState(!!profile.owner_technician_id);
+  const [toggling, setToggling] = useState(false);
+  const [toggleError, setToggleError] = useState<string | null>(null);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -116,6 +120,82 @@ function ProfileSettings({ profile }: { profile: Profile }) {
     } else {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    }
+  }
+
+  async function handleTechnicianToggle(enabled: boolean) {
+    setToggling(true);
+    setToggleError(null);
+
+    try {
+      if (enabled) {
+        // Check if technician record already exists
+        const { data: existing, error: fetchError } = await supabase
+          .from("technicians")
+          .select("*")
+          .eq("user_id", profile.id)
+          .eq("company_id", profile.company_id)
+          .maybeSingle();
+
+        if (fetchError) throw fetchError;
+
+        let techId: string;
+        if (existing) {
+          // Reactivate existing record
+          const { error: updateError } = await supabase
+            .from("technicians")
+            .update({ is_active: true })
+            .eq("id", existing.id);
+          if (updateError) throw updateError;
+          techId = existing.id;
+        } else {
+          // Create new technician record
+          const { data: newTech, error: createError } = await supabase
+            .from("technicians")
+            .insert({
+              name: profile.name,
+              email: session?.user?.email ?? null,
+              phone: profile.phone,
+              color: TECHNICIAN_COLORS[0],
+              is_active: true,
+            })
+            .select("*")
+            .single();
+          if (createError) throw createError;
+          techId = newTech.id;
+        }
+
+        // Link technician to profile
+        const { error: linkError } = await supabase
+          .from("profiles")
+          .update({ owner_technician_id: techId })
+          .eq("id", profile.id);
+        if (linkError) throw linkError;
+
+        setIsTechnician(true);
+      } else {
+        // Deactivate technician record
+        if (profile.owner_technician_id) {
+          const { error: deactivateError } = await supabase
+            .from("technicians")
+            .update({ is_active: false })
+            .eq("id", profile.owner_technician_id);
+          if (deactivateError) throw deactivateError;
+        }
+
+        // Clear the link
+        const { error: unlinkError } = await supabase
+          .from("profiles")
+          .update({ owner_technician_id: null })
+          .eq("id", profile.id);
+        if (unlinkError) throw unlinkError;
+
+        setIsTechnician(false);
+      }
+    } catch (err: any) {
+      setToggleError(err.message || "Failed to update technician status");
+    } finally {
+      setToggling(false);
     }
   }
 
@@ -169,6 +249,55 @@ function ProfileSettings({ profile }: { profile: Profile }) {
           </button>
         </div>
       </div>
+
+      {profile.role === "owner" && (
+        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent-100 dark:bg-accent-900">
+              <Wrench className="h-5 w-5 text-accent-700 dark:text-accent-300" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
+                I also work as a technician
+              </h3>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Enable this to assign jobs to yourself and access the technician mobile view. You can turn this off anytime — your work history will be preserved.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              {isTechnician ? "Technician mode is ON" : "Technician mode is OFF"}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleTechnicianToggle(!isTechnician)}
+              disabled={toggling}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                isTechnician ? "bg-primary-600" : "bg-slate-300 dark:bg-slate-600"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  isTechnician ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+
+          {toggling && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Updating...</span>
+            </div>
+          )}
+
+          {toggleError && (
+            <p className="mt-3 text-sm text-error-600 dark:text-error-400">{toggleError}</p>
+          )}
+        </div>
+      )}
     </form>
   );
 }

@@ -66,6 +66,10 @@ export function TechnicianMobilePage() {
   const [viewing, setViewing] = useState<WorkOrder | null>(null);
 
   const myTechnician = useMemo(() => {
+    // Owner-technician: use the linked technician ID
+    if (profile?.owner_technician_id) {
+      return technicians.find((t) => t.id === profile.owner_technician_id) ?? null;
+    }
     if (!profile?.name) return null;
     return technicians.find((t) => t.name.toLowerCase() === profile.name.toLowerCase()) ?? null;
   }, [technicians, profile]);

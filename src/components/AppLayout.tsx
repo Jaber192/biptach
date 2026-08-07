@@ -33,7 +33,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const visibleItems = NAV_ITEMS.filter((item) => profile && item.roles.includes(profile.role));
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (!profile) return false;
+    // Show My Jobs for owners who are also active technicians
+    if (item.to === "/my-jobs" && profile.role === "owner" && profile.owner_technician_id) {
+      return true;
+    }
+    return item.roles.includes(profile.role);
+  });
 
   async function handleSignOut() {
     await signOut();

@@ -9,6 +9,7 @@ export interface Profile {
   phone: string | null;
   is_active: boolean;
   company_id: string | null;
+  owner_technician_id: string | null;
   created_at: string;
   updated_at: string;
 }
