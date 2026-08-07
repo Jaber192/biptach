@@ -93,11 +93,14 @@ export function useWorkOrders() {
       [...list].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     async function load() {
+      let hadCache = false;
+
       // 1. Load from IndexedDB cache first (instant, works offline)
       try {
         const cached = await indexedDBManager.getAll<WorkOrderRow>("work_orders");
         debugLog(`work_orders cache rows: ${cached.length}`);
         if (!cancelled && cached.length > 0) {
+          hadCache = true;
           setWorkOrders(sortByNewest(cached.map(rowToWorkOrder)));
           setLoading(false);
         }
@@ -114,9 +117,24 @@ export function useWorkOrders() {
 
         if (!cancelled) {
           if (error) {
-            debugLog(`fetch work_orders FAILED: ${error.message}`, "error");
+            // Transient failure (network blip, token refresh race): keep the
+            // cached data instead of wiping the list.
+            debugLog(`fetch work_orders FAILED: ${error.message} — keeping cached data`, "warn");
+            setLoading(false);
+            return;
           }
+
           const rows = (data as WorkOrderRow[] | null) ?? [];
+
+          // Guard: an empty server response while we already have cached data
+          // is almost always transient (e.g. expired JWT makes RLS return 0
+          // rows). Never wipe good data with an empty result.
+          if (rows.length === 0 && hadCache) {
+            debugLog("fetch work_orders returned EMPTY but cache has data — keeping cache", "warn");
+            setLoading(false);
+            return;
+          }
+
           let merged = rows.map(rowToWorkOrder);
 
           // Update cache
@@ -137,9 +155,6 @@ export function useWorkOrders() {
           }
 
           debugLog(`fetch work_orders ok. server rows: ${rows.length} | merged: ${merged.length}`);
-          if (merged.length === 0) {
-            debugLog("about to OVERWRITE work orders state with EMPTY list", "error");
-          }
           setWorkOrders(sortByNewest(merged));
           setLoading(false);
         }

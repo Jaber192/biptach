@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
 import { enqueueOperation, getCurrentUserContext, getPendingCreates, isOnline } from "../lib/offlineQueue";
+import { debugLog } from "../lib/debugBanner";
 import type { Customer, CustomerInput } from "../types";
 
 type CustomerRow = {
@@ -60,10 +61,13 @@ export function useCustomers() {
       const sortByNewest = (list: Customer[]) =>
         [...list].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
+      let hadCache = false;
+
       // 1. Load from IndexedDB cache first
       try {
         const cached = await indexedDBManager.getAll<CustomerRow>("customers");
         if (!cancelled && cached.length > 0) {
+          hadCache = true;
           setCustomers(sortByNewest(cached.map(rowToCustomer)));
           setLoading(false);
         }
@@ -80,9 +84,22 @@ export function useCustomers() {
 
         if (!cancelled) {
           if (error) {
-            console.error("Failed to load customers:", error.message);
+            // Transient failure: keep cached data instead of wiping the list.
+            debugLog(`fetch customers FAILED: ${error.message} — keeping cached data`, "warn");
+            setLoading(false);
+            return;
           }
+
           const rows = (data as CustomerRow[] | null) ?? [];
+
+          // Never wipe good cached data with an empty server response
+          // (transient issue, e.g. expired JWT → RLS returns 0 rows).
+          if (rows.length === 0 && hadCache) {
+            debugLog("fetch customers returned EMPTY but cache has data — keeping cache", "warn");
+            setLoading(false);
+            return;
+          }
+
           let merged = rows.map(rowToCustomer);
 
           if (rows.length > 0) {

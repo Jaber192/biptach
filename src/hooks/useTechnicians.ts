@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
 import { enqueueOperation, getCurrentUserContext, getPendingCreates, isOnline } from "../lib/offlineQueue";
+import { debugLog } from "../lib/debugBanner";
 import type { Technician, TechnicianInput } from "../types";
 
 type TechnicianRow = {
@@ -57,10 +58,13 @@ export function useTechnicians() {
     let cancelled = false;
 
     async function load() {
+      let hadCache = false;
+
       // 1. Load from IndexedDB cache first
       try {
         const cached = await indexedDBManager.getAll<TechnicianRow>("technicians");
         if (!cancelled && cached.length > 0) {
+          hadCache = true;
           setTechnicians(cached.map(rowToTechnician));
           setLoading(false);
         }
@@ -77,9 +81,22 @@ export function useTechnicians() {
 
         if (!cancelled) {
           if (error) {
-            console.error("Failed to load technicians:", error.message);
+            // Transient failure: keep cached data instead of wiping the list.
+            debugLog(`fetch technicians FAILED: ${error.message} — keeping cached data`, "warn");
+            setLoading(false);
+            return;
           }
+
           const rows = (data as TechnicianRow[] | null) ?? [];
+
+          // Never wipe good cached data with an empty server response
+          // (transient issue, e.g. expired JWT → RLS returns 0 rows).
+          if (rows.length === 0 && hadCache) {
+            debugLog("fetch technicians returned EMPTY but cache has data — keeping cache", "warn");
+            setLoading(false);
+            return;
+          }
+
           setTechnicians(rows.map(rowToTechnician));
           setLoading(false);
 
