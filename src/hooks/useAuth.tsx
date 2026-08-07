@@ -165,11 +165,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }, 10000); // 10 second timeout
 
-    console.log('[Auth] Calling supabase.auth.getSession()');
     supabase.auth
       .getSession()
       .then(({ data }) => {
-        console.log('[Auth] getSession() resolved:', data.session ? 'session exists' : 'no session');
         if (!mounted) return;
         clearTimeout(authTimeout);
         (async () => {
@@ -180,8 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (mounted) setLoading(false);
         })();
       })
-      .catch((err) => {
-        console.error('[Auth] getSession() failed:', err);
+      .catch(() => {
         if (mounted) {
           clearTimeout(authTimeout);
           setLoading(false);
