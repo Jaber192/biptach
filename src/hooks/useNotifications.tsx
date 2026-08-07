@@ -72,6 +72,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
             console.error("Failed to load notifications:", error.message);
           }
           const rows = (data as NotificationRow[] | null) ?? [];
+          console.log("[Notifications] Loaded from Supabase:", rows.length, "rows");
+          if (rows.length > 0) {
+            console.log("[Notifications] First row:", rows[0]);
+          }
           setNotifications(rows.map(rowToNotification));
 
           if (rows.length > 0) {
