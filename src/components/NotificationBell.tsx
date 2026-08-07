@@ -48,13 +48,8 @@ export function NotificationBell() {
   }, []);
 
   const role = profile?.role ?? "technician";
-  console.log("[NotificationBell] User role:", role);
-  console.log("[NotificationBell] Total notifications:", notifications.length);
-  if (notifications.length > 0) {
-    console.log("[NotificationBell] First notification:", notifications[0]);
-  }
-  const visible = notifications.filter((n) => n.recipientRole === role);
-  console.log("[NotificationBell] Visible after role filter:", visible.length);
+  // Owners see all notifications; others only see notifications matching their role
+  const visible = notifications.filter((n) => role === "owner" || n.recipientRole === role);
   const unreadCount = visible.filter((n) => !n.read).length;
   const recent = visible.slice(0, 8);
 
@@ -70,13 +65,6 @@ export function NotificationBell() {
 
   return (
     <div className="relative" ref={ref}>
-      {/* DEBUG: temporary notification debug overlay */}
-      <div className="fixed top-20 left-2 z-[9999] rounded bg-red-600 p-2 text-[11px] text-white font-mono leading-relaxed">
-        R:{role} T:{notifications.length} V:{visible.length} U:{unreadCount}
-        {notifications.length > 0 && (
-          <div>F:{notifications[0].recipientRole}|{notifications[0].type}|{notifications[0].title}</div>
-        )}
-      </div>
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
