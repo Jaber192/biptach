@@ -57,11 +57,14 @@ export function useCustomers() {
     let cancelled = false;
 
     async function load() {
+      const sortByNewest = (list: Customer[]) =>
+        [...list].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
       // 1. Load from IndexedDB cache first
       try {
         const cached = await indexedDBManager.getAll<CustomerRow>("customers");
         if (!cancelled && cached.length > 0) {
-          setCustomers(cached.map(rowToCustomer));
+          setCustomers(sortByNewest(cached.map(rowToCustomer)));
           setLoading(false);
         }
       } catch (e) {
@@ -80,8 +83,7 @@ export function useCustomers() {
             console.error("Failed to load customers:", error.message);
           }
           const rows = (data as CustomerRow[] | null) ?? [];
-          setCustomers(rows.map(rowToCustomer));
-          setLoading(false);
+          let merged = rows.map(rowToCustomer);
 
           if (rows.length > 0) {
             await indexedDBManager.seedStore("customers", rows);
@@ -95,9 +97,12 @@ export function useCustomers() {
               .filter(op => !serverIds.has(op.data.id as string))
               .map(op => rowToCustomer(op.data as CustomerRow));
             if (offlineItems.length > 0) {
-              setCustomers(prev => [...offlineItems, ...prev]);
+              merged = [...offlineItems, ...merged];
             }
           }
+
+          setCustomers(sortByNewest(merged));
+          setLoading(false);
         }
       } else if (!cancelled) {
         setLoading(false);
