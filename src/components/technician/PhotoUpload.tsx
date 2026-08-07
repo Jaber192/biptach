@@ -128,6 +128,7 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
   }
 
   function removeAt(index: number) {
+    console.log("[PhotoUpload] removeAt called, index:", index);
     onChange(photos.filter((_, i) => i !== index));
   }
 
@@ -166,9 +167,9 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
                 type="button"
                 onClick={() => removeAt(i)}
                 aria-label={`Remove photo ${i + 1}`}
-                className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-red-600/90 text-white shadow-sm sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full bg-red-600/90 text-white shadow-sm sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
 
               {/* Replace button — always visible on touch, hover on desktop */}
@@ -176,9 +177,9 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
                 type="button"
                 onClick={() => triggerReplace(i)}
                 aria-label={`Replace photo ${i + 1}`}
-                className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/70 text-white shadow-sm sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                className="absolute bottom-1 right-1 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/70 text-white shadow-sm sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
               >
-                <Camera className="h-3.5 w-3.5" />
+                <Camera className="h-4 w-4" />
               </button>
             </div>
           ))}
