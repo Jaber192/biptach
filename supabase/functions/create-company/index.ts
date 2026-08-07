@@ -1,3 +1,4 @@
+// @ts-nocheck -- Supabase edge functions run on Deno, not the app's TS build.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
