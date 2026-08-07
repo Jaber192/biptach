@@ -3,7 +3,7 @@ import { User, Users, Save, Check, Shield, Loader as Loader2, Building2, Mail, P
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { TECHNICIAN_COLORS } from "../hooks/useTechnicians";
-import type { Invitation, InvitationRole, Profile, UserRole } from "../types";
+import type { Company, Invitation, InvitationRole, Profile, UserRole } from "../types";
 
 type ProfileRow = Profile;
 type InvitationRow = Invitation;
@@ -347,28 +347,101 @@ function ProfileSettings({ profile }: { profile: Profile }) {
 }
 
 function CompanySettings() {
-  const { company } = useAuth();
-  const [name, setName] = useState(company?.name ?? "");
+  const { company: authCompany, profile } = useAuth();
+  const [fetchedCompany, setFetchedCompany] = useState<Company | null>(null);
+  const [loading, setLoading] = useState(!authCompany);
+  const [name, setName] = useState(authCompany?.name ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const activeCompany = authCompany || fetchedCompany;
+
+  useEffect(() => {
+    if (authCompany) {
+      setName(authCompany.name);
+      setLoading(false);
+      return;
+    }
+
+    if (!profile?.company_id) {
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    setLoading(true);
+
+    supabase
+      .from("companies")
+      .select("*")
+      .eq("id", profile.company_id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!isMounted) return;
+        if (error) {
+          setError(`Failed to load company details: ${error.message}`);
+        } else if (data) {
+          setFetchedCompany(data as Company);
+          setName(data.name);
+        } else {
+          setError("Company record not found or access denied by policy.");
+        }
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authCompany, profile?.company_id]);
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!company) return;
+    if (!activeCompany) return;
     setSaving(true);
     setError(null);
     setSaved(false);
-    const { error } = await supabase.from("companies").update({ name }).eq("id", company.id);
+    const { error } = await supabase.from("companies").update({ name }).eq("id", activeCompany.id);
     setSaving(false);
     if (error) setError(error.message);
     else {
       setSaved(true);
+      if (fetchedCompany) {
+        setFetchedCompany({ ...fetchedCompany, name });
+      }
       setTimeout(() => setSaved(false), 2500);
     }
   }
 
-  if (!company) return null;
+  if (loading) {
+    return (
+      <div className="flex max-w-lg items-center justify-center p-8">
+        <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
+      </div>
+    );
+  }
+
+  if (!activeCompany) {
+    return (
+      <div className="max-w-lg rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="mb-4 flex items-center gap-3 text-amber-600 dark:text-amber-400">
+          <Building2 className="h-6 w-6" />
+          <h3 className="font-semibold text-slate-900 dark:text-white">Unable to load company details</h3>
+        </div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          {error || "Company workspace details could not be retrieved."}
+        </p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-4 flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-700"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Reload page
+        </button>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSave} className="max-w-lg space-y-5">
@@ -378,7 +451,7 @@ function CompanySettings() {
             <Building2 className="h-6 w-6" />
           </div>
           <div>
-            <p className="font-semibold text-slate-900 dark:text-white">{company.name}</p>
+            <p className="font-semibold text-slate-900 dark:text-white">{activeCompany.name}</p>
             <p className="text-sm text-slate-500 dark:text-slate-400">Company workspace</p>
           </div>
         </div>
@@ -395,7 +468,7 @@ function CompanySettings() {
         <div className="mt-6">
           <button
             type="submit"
-            disabled={saving || name === company.name}
+            disabled={saving || name === activeCompany.name}
             className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
