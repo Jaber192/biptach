@@ -46,7 +46,7 @@ export function WorkOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | "all">("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<WorkOrder | null>(null);
-  const [viewing, setViewing] = useState<WorkOrder | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<WorkOrder | null>(null);
 
   const filtered = useMemo(() => {
@@ -68,7 +68,7 @@ export function WorkOrdersPage() {
 
   function openEdit(workOrder: WorkOrder) {
     setEditing(workOrder);
-    setViewing(null);
+    setViewingId(null);
     setFormOpen(true);
   }
 
@@ -113,10 +113,11 @@ export function WorkOrdersPage() {
     if (confirmDelete) {
       deleteWorkOrder(confirmDelete.id);
       setConfirmDelete(null);
-      if (viewing?.id === confirmDelete.id) setViewing(null);
+      if (viewing?.id === confirmDelete.id) setViewingId(null);
     }
   }
 
+  const viewing = viewingId ? workOrders.find((w) => w.id === viewingId) ?? null : null;
   const viewingCustomer = viewing?.customerId ? getCustomer(viewing.customerId) : null;
 
   return (
@@ -179,7 +180,7 @@ export function WorkOrdersPage() {
                 <li
                   key={workOrder.id}
                   className="group flex cursor-pointer items-start gap-4 px-4 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                  onClick={() => setViewing(workOrder)}
+                  onClick={() => setViewingId(workOrder.id)}
                 >
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-700 dark:bg-primary-900 dark:text-primary-300">
                     <ClipboardList className="h-5 w-5" />
@@ -259,10 +260,10 @@ export function WorkOrdersPage() {
       <WorkOrderDetailDrawer
         workOrder={viewing}
         customer={viewingCustomer}
-        onClose={() => setViewing(null)}
+        onClose={() => setViewingId(null)}
         onEdit={openEdit}
         onDelete={(w) => {
-          setViewing(null);
+          setViewingId(null);
           setConfirmDelete(w);
         }}
       />

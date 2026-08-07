@@ -13,7 +13,7 @@ import { useWorkOrders } from "../hooks/useWorkOrders";
 import { useCustomers } from "../hooks/useCustomers";
 import { useTechnicians } from "../hooks/useTechnicians";
 import { useAuth } from "../hooks/useAuth";
-import type { WorkOrder, WorkOrderStatus } from "../types";
+import type { WorkOrderStatus } from "../types";
 import {
   PRIORITY_BADGE_CLASSES,
   PRIORITY_LABELS,
@@ -63,7 +63,7 @@ export function TechnicianMobilePage() {
   const { profile } = useAuth();
   const [filter, setFilter] = useState<Filter>("active");
   const [query, setQuery] = useState("");
-  const [viewing, setViewing] = useState<WorkOrder | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
   const myTechnician = useMemo(() => {
     // Owner-technician: use the linked technician ID
@@ -108,6 +108,7 @@ export function TechnicianMobilePage() {
     all: myJobs.length,
   }), [myJobs]);
 
+  const viewing = viewingId ? workOrders.find((w) => w.id === viewingId) ?? null : null;
   const viewingCustomer = viewing?.customerId ? getCustomer(viewing.customerId) : null;
 
   return (
@@ -159,7 +160,7 @@ export function TechnicianMobilePage() {
             return (
               <button
                 key={job.id}
-                onClick={() => setViewing(job)}
+                onClick={() => setViewingId(job.id)}
                 className="block w-full rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition-all hover:border-primary-300 hover:shadow-md active:scale-[0.99] dark:border-slate-800 dark:bg-slate-900 dark:hover:border-primary-700"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -223,7 +224,7 @@ export function TechnicianMobilePage() {
       <JobDetailSheet
         workOrder={viewing}
         customer={viewingCustomer}
-        onClose={() => setViewing(null)}
+        onClose={() => setViewingId(null)}
         onPatch={patchWorkOrder}
       />
     </div>
