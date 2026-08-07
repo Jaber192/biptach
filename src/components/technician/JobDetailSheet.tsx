@@ -61,7 +61,6 @@ function elapsed(startIso: string | null, endIso: string | null): string {
 export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDetailSheetProps) {
   const [notes, setNotes] = useState(workOrder?.techNotes ?? "");
   const [saving, setSaving] = useState<string | null>(null);
-  const [debugMsg, setDebugMsg] = useState<string>("");
   const { push } = useNotifications();
 
   if (!workOrder) return null;
@@ -77,21 +76,11 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
 
   function patch(partial: Partial<WorkOrder>, label: string) {
     setSaving(label);
-    setDebugMsg(`PATCH called: ${label}, status=${partial.status ?? workOrder!.status}`);
-    try {
-      onPatch(workOrder!.id, partial);
-      setTimeout(() => {
-        setDebugMsg(`PATCH done: ${label}, new status=${partial.status ?? workOrder!.status}`);
-        setSaving(null);
-      }, 600);
-    } catch (e: any) {
-      setDebugMsg(`PATCH ERROR: ${e?.message ?? e}`);
-      setSaving(null);
-    }
+    onPatch(workOrder!.id, partial);
+    setTimeout(() => setSaving(null), 600);
   }
 
   function handleStart() {
-    alert("handleStart called! status=" + workOrder!.status + " id=" + workOrder!.id);
     const now = new Date().toISOString();
     patch({ status: "in_progress" as WorkOrderStatus, clockInTime: workOrder!.clockInTime ?? now }, "Starting");
     push({
@@ -150,11 +139,6 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 backdrop-blur-sm sm:items-center sm:p-4">
       <div className="flex h-[92vh] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-xl dark:bg-slate-900 sm:h-auto sm:max-h-[88vh] sm:rounded-2xl">
-        {debugMsg && (
-          <div className="bg-yellow-100 px-4 py-2 text-xs font-mono text-yellow-900 border-b border-yellow-300">
-            {debugMsg}
-          </div>
-        )}
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex flex-wrap items-center gap-2">
