@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useOfflineQueue, type OfflineOperation } from "./useOfflineQueue";
 import { indexedDBManager } from "../lib/indexeddb";
 import { safeGet } from "../utils/supabaseUtils";
+import { getCurrentUserContext } from "../lib/offlineQueue";
 
 export function useSyncQueue() {
   const {
@@ -28,7 +29,29 @@ export function useSyncQueue() {
   const syncOperations = useCallback(async () => {
     if (!isOnline || !isLoaded || syncingRef.current) return;
 
-    const pendingOps = getPendingOperations();
+    // Load all operations from IndexedDB to catch failed ones too
+    const allOps = await indexedDBManager.getQueueOperations<OfflineOperation>();
+    const { userId, companyId } = getCurrentUserContext();
+
+    // Reset failed operations back to pending and patch with correct user context
+    for (const op of allOps) {
+      if (op.status === "failed") {
+        if (op.type === "create" && op.data) {
+          if (userId && !op.data.user_id) {
+            op.data.user_id = userId;
+          }
+          if (companyId && !op.data.company_id) {
+            op.data.company_id = companyId;
+          }
+        }
+        op.status = "pending";
+        await indexedDBManager.updateQueueOperation(op.id, op);
+      }
+    }
+
+    // Reload to get the updated state
+    const updatedOps = await indexedDBManager.getQueueOperations<OfflineOperation>();
+    const pendingOps = updatedOps.filter(op => op.status === "pending");
     if (pendingOps.length === 0) return;
 
     syncingRef.current = true;

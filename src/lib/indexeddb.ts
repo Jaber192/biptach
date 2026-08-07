@@ -230,6 +230,10 @@ export class IndexedDBManager {
     return this.delete("sync_queue", id);
   }
 
+  async updateQueueOperation<T>(id: string, data: Partial<T>): Promise<void> {
+    return this.update("sync_queue", id, data);
+  }
+
   async clearQueue(): Promise<void> {
     return this.clear("sync_queue");
   }
