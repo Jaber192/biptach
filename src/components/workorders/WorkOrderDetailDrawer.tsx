@@ -173,7 +173,13 @@ export function WorkOrderDetailDrawer({
               Signature
             </div>
             {workOrder.signatureStorageId ? (
-              <p className="mt-1.5 text-sm text-slate-700 dark:text-slate-200">Signature captured</p>
+              <div className="mt-2 rounded-lg border border-slate-200 bg-white p-2 dark:border-slate-700 dark:bg-slate-800">
+                <img
+                  src={workOrder.signatureStorageId}
+                  alt="Customer signature"
+                  className="max-h-40 w-full object-contain"
+                />
+              </div>
             ) : (
               <p className="mt-1.5 text-sm italic text-slate-400 dark:text-slate-500">No signature captured</p>
             )}
