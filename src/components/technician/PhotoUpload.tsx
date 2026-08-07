@@ -58,23 +58,56 @@ function compressImage(file: File): Promise<string> {
   });
 }
 
+/** Wait for the browser to actually paint the current frame. */
+function waitForPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
 export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [processing, setProcessing] = useState(0);
+  const replaceIndexRef = useRef<number | null>(null);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+
+    const replaceIdx = replaceIndexRef.current;
+    replaceIndexRef.current = null;
+
+    if (replaceIdx !== null) {
+      // Replace mode: compress one file and swap it into the existing slot
+      setProcessing(1);
+      await waitForPaint();
+
+      const startTime = Date.now();
+      try {
+        const compressed = await compressImage(files[0]);
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 600) await new Promise((r) => setTimeout(r, 600 - elapsed));
+
+        const updated = [...photos];
+        updated[replaceIdx] = compressed;
+        onChange(updated);
+      } catch (err) {
+        console.error("Photo compression failed:", err);
+      }
+      setProcessing(0);
+      return;
+    }
+
+    // Add mode: append new photos
     const remaining = max - photos.length;
     if (remaining <= 0) return;
 
     const toProcess = Array.from(files).slice(0, remaining);
     setProcessing(toProcess.length);
-
-    // Yield to browser so it can paint the loading state before we start heavy work
-    await new Promise((r) => setTimeout(r, 0));
+    await waitForPaint();
 
     const startTime = Date.now();
-    const MIN_DISPLAY_MS = 600; // minimum time to show loading indicator
 
     try {
       const newPhotos: string[] = [];
@@ -84,11 +117,8 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
         setProcessing((p) => p - 1);
       }
 
-      // Ensure loading indicator is visible for at least MIN_DISPLAY_MS
       const elapsed = Date.now() - startTime;
-      if (elapsed < MIN_DISPLAY_MS) {
-        await new Promise((r) => setTimeout(r, MIN_DISPLAY_MS - elapsed));
-      }
+      if (elapsed < 600) await new Promise((r) => setTimeout(r, 600 - elapsed));
 
       onChange([...photos, ...newPhotos]);
     } catch (err) {
@@ -101,48 +131,73 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
     onChange(photos.filter((_, i) => i !== index));
   }
 
+  function triggerReplace(index: number) {
+    replaceIndexRef.current = index;
+    inputRef.current?.click();
+  }
+
   const isBusy = processing > 0;
 
   return (
     <div>
-      <div className="grid grid-cols-3 gap-2">
-        {photos.map((photo, i) => (
-          <div
-            key={i}
-            className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
-          >
-            <img src={photo} alt={`Job photo ${i + 1}`} className="h-full w-full object-cover" />
+      <div className="relative">
+        {/* Processing overlay */}
+        {isBusy && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm dark:bg-slate-900/80">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                Compressing {processing} photo{processing > 1 ? "s" : ""}…
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-2">
+          {photos.map((photo, i) => (
+            <div
+              key={i}
+              className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800"
+            >
+              <img src={photo} alt={`Job photo ${i + 1}`} className="h-full w-full object-cover" />
+
+              {/* Delete button — always visible on touch, hover on desktop */}
+              <button
+                type="button"
+                onClick={() => removeAt(i)}
+                aria-label={`Remove photo ${i + 1}`}
+                className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-red-600/90 text-white shadow-sm sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              {/* Replace button — always visible on touch, hover on desktop */}
+              <button
+                type="button"
+                onClick={() => triggerReplace(i)}
+                aria-label={`Replace photo ${i + 1}`}
+                className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/70 text-white shadow-sm sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+              >
+                <Camera className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+
+          {photos.length < max && (
             <button
               type="button"
-              onClick={() => removeAt(i)}
-              aria-label={`Remove photo ${i + 1}`}
-              className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/70 text-white opacity-0 transition-opacity group-hover:opacity-100"
+              onClick={() => {
+                replaceIndexRef.current = null;
+                inputRef.current?.click();
+              }}
+              disabled={isBusy}
+              className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 transition-colors hover:border-primary-400 hover:text-primary-600 disabled:opacity-60 dark:border-slate-700 dark:text-slate-400 dark:hover:border-primary-700 dark:hover:text-primary-400"
             >
-              <X className="h-4 w-4" />
+              <Camera className="h-6 w-6" />
+              <span className="text-xs font-medium">Add photo</span>
             </button>
-          </div>
-        ))}
-
-        {photos.length < max && (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={isBusy}
-            className="relative flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 transition-colors hover:border-primary-400 hover:text-primary-600 disabled:opacity-60 dark:border-slate-700 dark:text-slate-400 dark:hover:border-primary-700 dark:hover:text-primary-400"
-          >
-            {isBusy ? (
-              <>
-                <Loader2 className="h-6 w-6 animate-spin" />
-                <span className="text-xs font-medium">Processing…</span>
-              </>
-            ) : (
-              <>
-                <Camera className="h-6 w-6" />
-                <span className="text-xs font-medium">Add photo</span>
-              </>
-            )}
-          </button>
-        )}
+          )}
+        </div>
       </div>
 
       <input
@@ -158,8 +213,7 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
         }}
       />
       <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-        {photos.length} of {max} photos
-        {isBusy && <span className="ml-1 text-primary-600 dark:text-primary-400">· compressing {processing}…</span>}
+        {photos.length} of {max} photos · Tap ✕ to delete, 📷 to retake
       </p>
     </div>
   );
