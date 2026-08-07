@@ -34,7 +34,7 @@ function timeAgo(iso: string): string {
 
 export function NotificationBell() {
   const { profile } = useAuth();
-  const { notifications, unreadCount, markRead, markAllRead, remove } = useNotifications();
+  const { notifications, markRead, markAllRead, remove } = useNotifications();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -49,6 +49,7 @@ export function NotificationBell() {
 
   const role = profile?.role ?? "technician";
   const visible = notifications.filter((n) => n.recipientRole === role);
+  const unreadCount = visible.filter((n) => !n.read).length;
   const recent = visible.slice(0, 8);
 
   function handleClick(n: AppNotification) {
