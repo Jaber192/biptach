@@ -589,13 +589,13 @@ function TeamManagement() {
 }
 
 function InvitationManagement() {
-  const { company } = useAuth();
   const [invitations, setInvitations] = useState<InvitationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<InvitationRole>("technician");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const loadInvitations = useCallback(async () => {
@@ -614,17 +614,26 @@ function InvitationManagement() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    if (!company) return;
     setCreating(true);
     setError(null);
-    const { error } = await supabase
-      .from("invitations")
-      .insert({ company_id: company.id, email, role });
+    setNotice(null);
+    const { data, error } = await supabase.functions.invoke("send-invitation", {
+      body: { email, role },
+    });
     setCreating(false);
     if (error) {
-      setError(error.message);
+      setError(error?.message ?? "Failed to send invitation");
       return;
     }
+    if (data?.error) {
+      setError(data.error);
+      return;
+    }
+    setNotice(
+      data?.email_error
+        ? data.email_error
+        : `Invitation sent! ${email} will receive a 6-digit code by email.`
+    );
     setEmail("");
     setRole("technician");
     loadInvitations();
@@ -637,8 +646,7 @@ function InvitationManagement() {
   }
 
   function copyCode(code: string) {
-    const link = `${window.location.origin}/signup?invite=${code}`;
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
   }
@@ -686,6 +694,7 @@ function InvitationManagement() {
           </button>
         </div>
         {error && <p className="mt-3 text-sm text-error-600 dark:text-error-400">{error}</p>}
+        {notice && <p className="mt-3 text-sm text-primary-600 dark:text-primary-400">{notice}</p>}
       </form>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -711,6 +720,11 @@ function InvitationManagement() {
                     <span className={`rounded-full px-2 py-0.5 font-medium ${ROLE_STYLES[inv.role]}`}>
                       {ROLE_LABELS[inv.role]}
                     </span>
+                    {!inv.accepted_by && (
+                      <span className="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-xs font-semibold tracking-widest text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                        {inv.invite_code}
+                      </span>
+                    )}
                     {inv.accepted_by ? (
                       <span className="text-accent-600 dark:text-accent-400">Accepted</span>
                     ) : inv.expires_at < new Date().toISOString() ? (
@@ -727,7 +741,7 @@ function InvitationManagement() {
                       className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                     >
                       <Copy className="h-3.5 w-3.5" />
-                      {copiedCode === inv.invite_code ? "Copied!" : "Copy link"}
+                      {copiedCode === inv.invite_code ? "Copied!" : "Copy code"}
                     </button>
                     <button
                       onClick={() => handleDelete(inv.id)}
