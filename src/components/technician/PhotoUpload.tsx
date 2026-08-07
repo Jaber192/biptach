@@ -1,21 +1,32 @@
 import { useRef, useState } from "react";
 import { Camera, X, Loader2 } from "lucide-react";
+import { deleteMediaByUrl, uploadJobPhoto } from "../../lib/mediaStorage";
 
 interface PhotoUploadProps {
   photos: string[];
   onChange: (photos: string[]) => void;
+  /** Work order the media belongs to — used for Supabase Storage paths. */
+  workOrderId: string;
   max?: number;
 }
 
 const MAX_DIMENSION = 1280;
 const JPEG_QUALITY = 0.7;
 
+interface CompressedImage {
+  /** JPEG blob — uploaded to Supabase Storage when online. */
+  blob: Blob;
+  /** Base64 data URL — offline/fallback representation. */
+  dataUrl: string;
+}
+
 /**
  * Compress an image file using the Canvas API.
  * Resizes to MAX_DIMENSION on the longest side and exports as JPEG.
  * A typical 10 MB phone photo becomes ~200-400 KB.
+ * Returns both a Blob (for Storage upload) and a data URL (fallback).
  */
-function compressImage(file: File): Promise<string> {
+function compressImage(file: File): Promise<CompressedImage> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -43,8 +54,20 @@ function compressImage(file: File): Promise<string> {
         ctx.drawImage(img, 0, 0, width, height);
         URL.revokeObjectURL(url);
 
-        const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
-        resolve(dataUrl);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error("Canvas toBlob failed"));
+              return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({ blob, dataUrl: reader.result as string });
+            reader.onerror = () => reject(new Error("Failed to read compressed blob"));
+            reader.readAsDataURL(blob);
+          },
+          "image/jpeg",
+          JPEG_QUALITY,
+        );
       } catch (err) {
         URL.revokeObjectURL(url);
         reject(err);
@@ -58,11 +81,21 @@ function compressImage(file: File): Promise<string> {
   });
 }
 
-export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
+export function PhotoUpload({ photos, onChange, workOrderId, max = 6 }: PhotoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  // Number of placeholder tiles shown in the grid while photos are compressing
+  // Number of placeholder tiles shown in the grid while photos are processing
   const [pendingCount, setPendingCount] = useState(0);
   const replaceIndexRef = useRef<number | null>(null);
+
+  /**
+   * Upload the compressed image to Supabase Storage and return its public
+   * URL. Falls back to the inline base64 data URL when offline or when the
+   * upload fails, so photos are never lost.
+   */
+  async function persistImage(compressed: CompressedImage): Promise<string> {
+    const url = await uploadJobPhoto(workOrderId, compressed.blob);
+    return url ?? compressed.dataUrl;
+  }
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -76,9 +109,13 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
       setPendingCount(1);
       try {
         const compressed = await compressImage(files[0]);
+        const stored = await persistImage(compressed);
+        const replaced = photos[replaceIdx];
         const updated = [...photos];
-        updated[replaceIdx] = compressed;
+        updated[replaceIdx] = stored;
         onChange(updated);
+        // Clean up the replaced object from Storage (no-op for base64)
+        if (replaced) void deleteMediaByUrl(replaced);
       } catch (err) {
         console.error("Photo compression failed:", err);
       }
@@ -97,7 +134,7 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
       const newPhotos: string[] = [];
       for (const file of toProcess) {
         const compressed = await compressImage(file);
-        newPhotos.push(compressed);
+        newPhotos.push(await persistImage(compressed));
         // Remove one placeholder as each photo finishes
         setPendingCount((p) => Math.max(0, p - 1));
       }
@@ -109,7 +146,10 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
   }
 
   function removeAt(index: number) {
+    const removed = photos[index];
     onChange(photos.filter((_, i) => i !== index));
+    // Clean up the deleted object from Storage (no-op for base64)
+    if (removed) void deleteMediaByUrl(removed);
   }
 
   function triggerReplace(index: number) {
@@ -161,7 +201,7 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
           >
             <Loader2 className="h-6 w-6 animate-spin text-primary-600 dark:text-primary-400" />
             <span className="text-xs font-medium text-primary-600 dark:text-primary-400">
-              Compressing…
+              Processing…
             </span>
           </div>
         ))}

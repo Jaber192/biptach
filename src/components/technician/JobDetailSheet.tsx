@@ -23,6 +23,7 @@ import {
 import { PhotoUpload } from "./PhotoUpload";
 import { SignaturePad } from "./SignaturePad";
 import { useNotifications } from "../../hooks/useNotifications";
+import { deleteMediaByUrl, uploadJobSignature } from "../../lib/mediaStorage";
 
 interface JobDetailSheetProps {
   workOrder: WorkOrder | null;
@@ -136,6 +137,25 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
     patch({ techNotes: notes.trim() || null }, "Saving notes");
   }
 
+  /**
+   * Upload the signature to Supabase Storage and store only the public URL.
+   * Falls back to the inline data URL when offline or when the upload fails,
+   * so the signature is never lost.
+   */
+  async function handleSignatureSave(dataUrl: string) {
+    setSaving("Signature");
+    const url = (await uploadJobSignature(workOrder!.id, dataUrl)) ?? dataUrl;
+    onPatch(workOrder!.id, { signatureStorageId: url });
+    setTimeout(() => setSaving(null), 600);
+  }
+
+  /** Clear the signature and clean up its Storage object (best-effort). */
+  function handleSignatureClear() {
+    const previous = workOrder!.signatureStorageId;
+    patch({ signatureStorageId: null }, "Signature");
+    if (previous) void deleteMediaByUrl(previous);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 backdrop-blur-sm sm:items-center sm:p-4">
       <div className="flex h-[92vh] w-full max-w-lg flex-col rounded-t-2xl bg-white shadow-xl dark:bg-slate-900 sm:h-auto sm:max-h-[88vh] sm:rounded-2xl">
@@ -242,6 +262,7 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
             </div>
             <PhotoUpload
               photos={workOrder.photos}
+              workOrderId={workOrder.id}
               onChange={(photos) => patch({ photos }, "Photos")}
               max={6}
             />
@@ -256,7 +277,7 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
               <div className="rounded-xl border border-slate-200 bg-white p-2 dark:border-slate-700">
                 <img src={workOrder.signatureStorageId} alt="Customer signature" className="h-32 w-full object-contain" />
                 <button
-                  onClick={() => patch({ signatureStorageId: null }, "Signature")}
+                  onClick={handleSignatureClear}
                   className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   Re-capture signature
@@ -264,8 +285,8 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
               </div>
             ) : (
               <SignaturePad
-                onSave={(dataUrl) => patch({ signatureStorageId: dataUrl }, "Signature")}
-                onClear={() => patch({ signatureStorageId: null }, "Signature")}
+                onSave={handleSignatureSave}
+                onClear={handleSignatureClear}
               />
             )}
           </div>
