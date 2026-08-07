@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
 import { enqueueOperation, getCurrentUserContext, getPendingCreates, isOnline } from "../lib/offlineQueue";
+import { debugLog } from "../lib/debugBanner";
 import type { WorkOrder, WorkOrderInput } from "../types";
 
 export type WorkOrderPatch = Partial<
@@ -95,7 +96,7 @@ export function useWorkOrders() {
       // 1. Load from IndexedDB cache first (instant, works offline)
       try {
         const cached = await indexedDBManager.getAll<WorkOrderRow>("work_orders");
-        console.log("[DataWipe] work_orders cache rows:", cached.length);
+        debugLog(`work_orders cache rows: ${cached.length}`);
         if (!cancelled && cached.length > 0) {
           setWorkOrders(sortByNewest(cached.map(rowToWorkOrder)));
           setLoading(false);
@@ -113,7 +114,7 @@ export function useWorkOrders() {
 
         if (!cancelled) {
           if (error) {
-            console.error("[DataWipe] fetch work_orders FAILED:", error.message);
+            debugLog(`fetch work_orders FAILED: ${error.message}`, "error");
           }
           const rows = (data as WorkOrderRow[] | null) ?? [];
           let merged = rows.map(rowToWorkOrder);
@@ -135,14 +136,9 @@ export function useWorkOrders() {
             }
           }
 
-          console.log(
-            "[DataWipe] fetch work_orders ok. server rows:",
-            rows.length,
-            "| merged:",
-            merged.length,
-          );
+          debugLog(`fetch work_orders ok. server rows: ${rows.length} | merged: ${merged.length}`);
           if (merged.length === 0) {
-            console.warn("[DataWipe] about to OVERWRITE work orders state with EMPTY list");
+            debugLog("about to OVERWRITE work orders state with EMPTY list", "error");
           }
           setWorkOrders(sortByNewest(merged));
           setLoading(false);

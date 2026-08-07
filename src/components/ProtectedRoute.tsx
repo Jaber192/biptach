@@ -3,6 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { useAuth } from "../hooks/useAuth";
 import type { UserRole } from "../types";
 import { Loader as Loader2 } from "lucide-react";
+import { debugLog } from "../lib/debugBanner";
 
 export function ProtectedRoute({
   children,
@@ -15,15 +16,9 @@ export function ProtectedRoute({
   const location = useLocation();
 
   useEffect(() => {
-    console.log(
-      "[DataWipe] ProtectedRoute render — loading:",
-      loading,
-      "| session:",
-      session ? "present" : "NULL",
-      "| profile:",
-      profile ? profile.role : "NULL",
-      "| path:",
-      location.pathname,
+    debugLog(
+      `ProtectedRoute — loading: ${loading} | session: ${session ? "present" : "NULL"} | profile: ${profile ? profile.role : "NULL"} | ${location.pathname}`,
+      !loading && !session ? "error" : "info",
     );
   }, [loading, session, profile, location.pathname]);
 

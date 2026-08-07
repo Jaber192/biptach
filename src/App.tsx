@@ -24,6 +24,7 @@ import { NotificationsPage } from "./pages/NotificationsPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { NotFoundPage } from "./pages/PlaceholderPage";
+import { DebugBanner } from "./components/DebugBanner";
 
 function MarketingSite() {
   return (
@@ -159,6 +160,7 @@ export default function App() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </BrowserRouter>
+      <DebugBanner />
       </NotificationsProvider>
       </OfflineProvider>
     </AuthProvider>
