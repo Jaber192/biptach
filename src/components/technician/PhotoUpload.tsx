@@ -70,6 +70,12 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
     const toProcess = Array.from(files).slice(0, remaining);
     setProcessing(toProcess.length);
 
+    // Yield to browser so it can paint the loading state before we start heavy work
+    await new Promise((r) => setTimeout(r, 0));
+
+    const startTime = Date.now();
+    const MIN_DISPLAY_MS = 600; // minimum time to show loading indicator
+
     try {
       const newPhotos: string[] = [];
       for (const file of toProcess) {
@@ -77,6 +83,13 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
         newPhotos.push(compressed);
         setProcessing((p) => p - 1);
       }
+
+      // Ensure loading indicator is visible for at least MIN_DISPLAY_MS
+      const elapsed = Date.now() - startTime;
+      if (elapsed < MIN_DISPLAY_MS) {
+        await new Promise((r) => setTimeout(r, MIN_DISPLAY_MS - elapsed));
+      }
+
       onChange([...photos, ...newPhotos]);
     } catch (err) {
       console.error("Photo compression failed:", err);
