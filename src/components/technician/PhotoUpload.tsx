@@ -128,7 +128,6 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
   }
 
   function removeAt(index: number) {
-    console.log("[PhotoUpload] removeAt called, index:", index);
     onChange(photos.filter((_, i) => i !== index));
   }
 
