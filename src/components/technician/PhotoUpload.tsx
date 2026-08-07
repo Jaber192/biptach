@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { Camera, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Camera, X, Loader2 } from "lucide-react";
 
 interface PhotoUploadProps {
   photos: string[];
@@ -7,32 +7,88 @@ interface PhotoUploadProps {
   max?: number;
 }
 
+const MAX_DIMENSION = 1280;
+const JPEG_QUALITY = 0.7;
+
+/**
+ * Compress an image file using the Canvas API.
+ * Resizes to MAX_DIMENSION on the longest side and exports as JPEG.
+ * A typical 10 MB phone photo becomes ~200-400 KB.
+ */
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        let { width, height } = img;
+
+        // Scale down if either dimension exceeds MAX_DIMENSION
+        if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+          const ratio = Math.min(MAX_DIMENSION / width, MAX_DIMENSION / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Could not get canvas context"));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        URL.revokeObjectURL(url);
+
+        const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
+        resolve(dataUrl);
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        reject(err);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load image for compression"));
+    };
+    img.src = url;
+  });
+}
+
 export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [processing, setProcessing] = useState(0);
 
-  function handleFiles(files: FileList | null) {
+  async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
     const remaining = max - photos.length;
     if (remaining <= 0) return;
 
-    const toRead = Array.from(files).slice(0, remaining);
-    Promise.all(
-      toRead.map(
-        (file) =>
-          new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
-          }),
-      ),
-    ).then((newPhotos) => {
+    const toProcess = Array.from(files).slice(0, remaining);
+    setProcessing(toProcess.length);
+
+    try {
+      const newPhotos: string[] = [];
+      for (const file of toProcess) {
+        const compressed = await compressImage(file);
+        newPhotos.push(compressed);
+        setProcessing((p) => p - 1);
+      }
       onChange([...photos, ...newPhotos]);
-    });
+    } catch (err) {
+      console.error("Photo compression failed:", err);
+      setProcessing(0);
+    }
   }
 
   function removeAt(index: number) {
     onChange(photos.filter((_, i) => i !== index));
   }
+
+  const isBusy = processing > 0;
 
   return (
     <div>
@@ -58,10 +114,20 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-slate-700 dark:text-slate-400 dark:hover:border-primary-700 dark:hover:text-primary-400"
+            disabled={isBusy}
+            className="relative flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 transition-colors hover:border-primary-400 hover:text-primary-600 disabled:opacity-60 dark:border-slate-700 dark:text-slate-400 dark:hover:border-primary-700 dark:hover:text-primary-400"
           >
-            <Camera className="h-6 w-6" />
-            <span className="text-xs font-medium">Add photo</span>
+            {isBusy ? (
+              <>
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="text-xs font-medium">Processing…</span>
+              </>
+            ) : (
+              <>
+                <Camera className="h-6 w-6" />
+                <span className="text-xs font-medium">Add photo</span>
+              </>
+            )}
           </button>
         )}
       </div>
@@ -80,6 +146,7 @@ export function PhotoUpload({ photos, onChange, max = 6 }: PhotoUploadProps) {
       />
       <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
         {photos.length} of {max} photos
+        {isBusy && <span className="ml-1 text-primary-600 dark:text-primary-400">· compressing {processing}…</span>}
       </p>
     </div>
   );
