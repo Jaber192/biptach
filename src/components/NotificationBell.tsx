@@ -71,13 +71,10 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={ref}>
       {/* DEBUG: temporary notification debug overlay */}
-      <div className="fixed bottom-2 left-2 z-[9999] rounded bg-black/80 p-2 text-[10px] text-white font-mono max-w-xs">
-        <div>Role: {role}</div>
-        <div>Total: {notifications.length}</div>
-        <div>Visible: {visible.length}</div>
-        <div>Unread: {unreadCount}</div>
+      <div className="fixed top-20 left-2 z-[9999] rounded bg-red-600 p-2 text-[11px] text-white font-mono leading-relaxed">
+        R:{role} T:{notifications.length} V:{visible.length} U:{unreadCount}
         {notifications.length > 0 && (
-          <div>First: {JSON.stringify({type: notifications[0].type, role: notifications[0].recipientRole, title: notifications[0].title})}</div>
+          <div>F:{notifications[0].recipientRole}|{notifications[0].type}|{notifications[0].title}</div>
         )}
       </div>
       <button
