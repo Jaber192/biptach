@@ -6,7 +6,7 @@ import { useAuth } from "../hooks/useAuth";
 import { supabase } from "../lib/supabase";
 
 export function SignUpPage() {
-  const { signUpWithCompany, acceptInvitation, session, profile } = useAuth();
+  const { signUpWithCompany, acceptInvitation, session, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const initialInvite = params.get("invite") ?? "";
@@ -49,7 +49,7 @@ export function SignUpPage() {
           error: fnError?.message ?? null,
           data: fnData ?? null,
         }));
-        const errMsg = fnError?.message ?? extractEdgeError(fnError?.data);
+        const errMsg = fnError?.message ?? extractEdgeError(fnData);
         if (errMsg) {
           setError(errMsg);
           setSubmitting(false);
@@ -63,6 +63,9 @@ export function SignUpPage() {
           return;
         }
       }
+      // Refresh the profile so ProtectedRoute sees the new company_id
+      // before we navigate to /dashboard.
+      await refreshProfile();
       navigate("/dashboard");
       return;
     }
