@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Check, CheckCheck, Trash2, ChevronRight } from "lucide-react";
-import { useNotifications } from "../hooks/useNotifications";
+import { useNotifications, isNotificationVisibleFor } from "../hooks/useNotifications";
 import { useAuth } from "../hooks/useAuth";
 import type { AppNotification, NotificationType, UserRole } from "../types";
 
@@ -48,8 +48,8 @@ export function NotificationBell() {
   }, []);
 
   const role = profile?.role ?? "technician";
-  // Owners see all notifications; others only see notifications matching their role
-  const visible = notifications.filter((n) => role === "owner" || n.recipientRole === role);
+  // Owners see all notifications; others only see notifications that target them
+  const visible = notifications.filter((n) => isNotificationVisibleFor(profile, n));
   const unreadCount = visible.filter((n) => !n.read).length;
   const recent = visible.slice(0, 8);
 

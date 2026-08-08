@@ -112,6 +112,7 @@ export type WorkOrderInput = Omit<
 
 export interface Technician {
   id: string;
+  user_id: string | null;
   name: string;
   phone: string | null;
   email: string | null;
@@ -141,6 +142,7 @@ export interface AppNotification {
   title: string;
   message: string;
   workOrderId: string | null;
+  userId: string | null;
   recipientRole: UserRole;
   read: boolean;
   created_at: string;

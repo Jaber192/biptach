@@ -79,6 +79,30 @@ Deno.serve(async (req: Request) => {
       .eq("id", user.id);
     if (profileError) throw profileError;
 
+    // For invited technicians, create a technicians record linked to the user
+    // account so the frontend can resolve "my work orders / my notifications"
+    // reliably by user_id instead of by name.
+    if (invitation.role === "technician") {
+      const { data: existingTech } = await supabase
+        .from("technicians")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("company_id", invitation.company_id)
+        .maybeSingle();
+
+      if (!existingTech) {
+        const { error: techError } = await supabase.from("technicians").insert({
+          user_id: user.id,
+          company_id: invitation.company_id,
+          name: user.user_metadata?.name ?? user.email ?? "Technician",
+          email: user.email ?? null,
+          color: "#0ea5e9",
+          is_active: true,
+        });
+        if (techError) throw techError;
+      }
+    }
+
     const { error: updateInvError } = await supabase
       .from("invitations")
       .update({ accepted_by: user.id, accepted_at: new Date().toISOString() })

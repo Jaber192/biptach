@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { supabase } from "../lib/supabase";
 import { indexedDBManager } from "../lib/indexeddb";
 import { enqueueOperation, isOnline } from "../lib/offlineQueue";
-import type { AppNotification, NotificationInput, NotificationType, UserRole } from "../types";
+import { useAuth } from "./useAuth";
+import type { AppNotification, NotificationInput, NotificationType, Profile, UserRole } from "../types";
 
 type NotificationRow = {
   id: string;
@@ -20,6 +21,7 @@ type NotificationRow = {
 function rowToNotification(row: NotificationRow): AppNotification {
   return {
     id: row.id,
+    userId: row.user_id ?? null,
     type: row.type,
     title: row.title,
     message: row.message,
@@ -30,6 +32,24 @@ function rowToNotification(row: NotificationRow): AppNotification {
   };
 }
 
+
+/**
+ * Determines whether a notification should be visible to the given profile.
+ * - Notifications with a target `userId` are only visible to that user
+ *   (owners keep a full view for transparency).
+ * - Notifications without a target fall back to role-based visibility.
+ */
+export function isNotificationVisibleFor(
+  profile: Profile | null,
+  notification: AppNotification,
+): boolean {
+  if (!profile) return false;
+  if (notification.userId) {
+    return notification.userId === profile.id || profile.role === "owner";
+  }
+  if (profile.role === "owner") return true;
+  return notification.recipientRole === profile.role;
+}
 
 interface NotificationsContextValue {
   notifications: AppNotification[];
@@ -45,6 +65,9 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const { profile } = useAuth();
+  const userId = profile?.id ?? null;
+  const isTechnician = profile?.role === "technician";
 
   useEffect(() => {
     let cancelled = false;
@@ -60,12 +83,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         console.error("Failed to load notifications from cache:", e);
       }
 
-      // 2. If online, fetch from Supabase and update cache
+      // 2. If online, fetch from Supabase and update cache.
+      // Technicians only fetch their own notifications.
       if (isOnline()) {
-        const { data, error } = await supabase
-          .from("notifications")
-          .select("*")
-          .order("created_at", { ascending: false });
+        let query = supabase.from("notifications").select("*");
+        if (isTechnician && userId) {
+          query = query.eq("user_id", userId);
+        }
+        const { data, error } = await query.order("created_at", { ascending: false });
 
         if (!cancelled) {
           if (error) {
@@ -88,10 +113,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, (payload) => {
         if (payload.eventType === "INSERT" && payload.new) {
           const row = payload.new as NotificationRow;
+          // Ignore inserts that don't belong to this technician
+          if (isTechnician && row.user_id && row.user_id !== userId) return;
           setNotifications((prev) => [rowToNotification(row), ...prev]);
           indexedDBManager.add("notifications", row).catch(() => {});
         } else if (payload.eventType === "UPDATE" && payload.new) {
           const row = payload.new as NotificationRow;
+          if (isTechnician && row.user_id && row.user_id !== userId) return;
           const updated = rowToNotification(row);
           setNotifications((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
           indexedDBManager.update("notifications", row.id, row).catch(() => {});
@@ -107,11 +135,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [isTechnician, userId]);
 
   const push = useCallback(async (input: NotificationInput) => {
     if (isOnline()) {
       const { error } = await supabase.from("notifications").insert({
+        user_id: input.userId,
         type: input.type,
         title: input.title,
         message: input.message,
@@ -124,7 +153,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString();
       const row: NotificationRow = {
         id: tempId,
-        user_id: "",
+        user_id: input.userId ?? "",
         company_id: "",
         type: input.type,
         title: input.title,
@@ -169,15 +198,18 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   const markAllRead = useCallback(async () => {
     if (isOnline()) {
-      const { error } = await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("read", false);
+      let query = supabase.from("notifications").update({ read: true }).eq("read", false);
+      // Technicians only mark their own notifications as read
+      if (isTechnician && userId) {
+        query = query.eq("user_id", userId);
+      }
+      const { error } = await query;
       if (error) console.error("Failed to mark all read:", error.message);
     } else {
       // Mark all as read locally
       const all = await indexedDBManager.getAll<NotificationRow>("notifications");
       for (const row of all) {
+        if (isTechnician && row.user_id && row.user_id !== userId) continue;
         if (!row.read) {
           await indexedDBManager.update("notifications", row.id, { read: true }).catch(() => {});
           await enqueueOperation({
@@ -189,7 +221,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       }
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     }
-  }, []);
+  }, [isTechnician, userId]);
 
   const remove = useCallback(async (id: string) => {
     if (isOnline()) {
@@ -211,16 +243,28 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   const clearAll = useCallback(async () => {
     if (isOnline()) {
-      const { error } = await supabase.from("notifications").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      if (error) console.error("Failed to clear notifications:", error.message);
-      else {
-        await indexedDBManager.clear("notifications").catch(() => {});
+      // Technicians only clear their own notifications
+      if (isTechnician && userId) {
+        const { error } = await supabase
+          .from("notifications")
+          .delete()
+          .eq("user_id", userId);
+        if (error) console.error("Failed to clear notifications:", error.message);
+        else {
+          await indexedDBManager.clear("notifications").catch(() => {});
+        }
+      } else {
+        const { error } = await supabase.from("notifications").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+        if (error) console.error("Failed to clear notifications:", error.message);
+        else {
+          await indexedDBManager.clear("notifications").catch(() => {});
+        }
       }
     } else {
       await indexedDBManager.clear("notifications").catch(() => {});
       setNotifications([]);
     }
-  }, []);
+  }, [isTechnician, userId]);
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.read).length,

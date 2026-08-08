@@ -13,6 +13,7 @@ import { useWorkOrders } from "../hooks/useWorkOrders";
 import { useCustomers } from "../hooks/useCustomers";
 import { useTechnicians } from "../hooks/useTechnicians";
 import { useAuth } from "../hooks/useAuth";
+import { resolveCurrentTechnician, filterWorkOrdersByTechnician } from "../utils/currentTechnician";
 import type { WorkOrderStatus } from "../types";
 import {
   PRIORITY_BADGE_CLASSES,
@@ -65,19 +66,13 @@ export function TechnicianMobilePage() {
   const [query, setQuery] = useState("");
   const [viewingId, setViewingId] = useState<string | null>(null);
 
-  const myTechnician = useMemo(() => {
-    // Owner-technician: use the linked technician ID
-    if (profile?.owner_technician_id) {
-      return technicians.find((t) => t.id === profile.owner_technician_id) ?? null;
-    }
-    if (!profile?.name) return null;
-    return technicians.find((t) => t.name.toLowerCase() === profile.name.toLowerCase()) ?? null;
-  }, [technicians, profile]);
+  const myTechnician = useMemo(
+    () => resolveCurrentTechnician(profile, technicians),
+    [profile, technicians]
+  );
 
   const myJobs = useMemo(() => {
-    const assigned = myTechnician
-      ? workOrders.filter((w) => w.assignedTo === myTechnician.id)
-      : workOrders.filter((w) => Boolean(w.assignedTo));
+    const assigned = filterWorkOrdersByTechnician(workOrders, myTechnician);
 
     const q = query.trim().toLowerCase();
     const searched = q
@@ -108,7 +103,7 @@ export function TechnicianMobilePage() {
     all: myJobs.length,
   }), [myJobs]);
 
-  const viewing = viewingId ? workOrders.find((w) => w.id === viewingId) ?? null : null;
+  const viewing = viewingId ? myJobs.find((w) => w.id === viewingId) ?? null : null;
   const viewingCustomer = viewing?.customerId ? getCustomer(viewing.customerId) : null;
 
   return (

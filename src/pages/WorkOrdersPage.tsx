@@ -10,7 +10,10 @@ import {
 } from "lucide-react";
 import { useWorkOrders } from "../hooks/useWorkOrders";
 import { useCustomers } from "../hooks/useCustomers";
+import { useTechnicians } from "../hooks/useTechnicians";
 import { useNotifications } from "../hooks/useNotifications";
+import { useAuth } from "../hooks/useAuth";
+import { resolveCurrentTechnician, filterWorkOrdersByTechnician } from "../utils/currentTechnician";
 import type { WorkOrder, WorkOrderInput, WorkOrderStatus } from "../types";
 import { WorkOrderFormModal } from "../components/workorders/WorkOrderFormModal";
 import { WorkOrderDetailDrawer } from "../components/workorders/WorkOrderDetailDrawer";
@@ -41,6 +44,8 @@ function formatScheduled(iso: string | null): string {
 export function WorkOrdersPage() {
   const { workOrders, addWorkOrder, updateWorkOrder, deleteWorkOrder } = useWorkOrders();
   const { customers, getCustomer } = useCustomers();
+  const { technicians } = useTechnicians();
+  const { profile } = useAuth();
   const { push } = useNotifications();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<WorkOrderStatus | "all">("all");
@@ -49,9 +54,18 @@ export function WorkOrdersPage() {
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<WorkOrder | null>(null);
 
+  const isTechnician = profile?.role === "technician";
+
+  // Technicians only see their own work history; managers/owners/dispatchers see all.
+  const scopedWorkOrders = useMemo(() => {
+    if (!isTechnician) return workOrders;
+    const myTech = resolveCurrentTechnician(profile, technicians);
+    return filterWorkOrdersByTechnician(workOrders, myTech);
+  }, [workOrders, isTechnician, profile, technicians]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return workOrders.filter((w) => {
+    return scopedWorkOrders.filter((w) => {
       if (statusFilter !== "all" && w.status !== statusFilter) return false;
       if (!q) return true;
       const customer = w.customerId ? getCustomer(w.customerId) : null;
@@ -59,7 +73,7 @@ export function WorkOrdersPage() {
         .filter(Boolean)
         .some((field) => field!.toLowerCase().includes(q));
     });
-  }, [workOrders, query, statusFilter, getCustomer]);
+  }, [scopedWorkOrders, query, statusFilter, getCustomer]);
 
   function openAdd() {
     setEditing(null);
@@ -72,6 +86,14 @@ export function WorkOrdersPage() {
     setFormOpen(true);
   }
 
+  // Resolve the user account of an assigned technician so job_assigned
+  // notifications are delivered only to that specific technician.
+  function assignedUserId(technicianId: string | null): string | null {
+    if (!technicianId) return null;
+    const tech = technicians.find((t) => t.id === technicianId);
+    return tech?.user_id ?? null;
+  }
+
   async function handleSubmit(input: WorkOrderInput) {
     if (editing) {
       await updateWorkOrder(editing.id, input);
@@ -81,6 +103,7 @@ export function WorkOrdersPage() {
           title: "Job reassigned",
           message: `"${input.title}" has been assigned to you.`,
           workOrderId: editing.id,
+          userId: assignedUserId(input.assignedTo),
           recipientRole: "technician",
         });
       }
@@ -92,6 +115,7 @@ export function WorkOrdersPage() {
           title: "Work order created",
           message: `"${input.title}" was created${input.assignedTo ? " and assigned" : ""}.`,
           workOrderId: wo.id,
+          userId: null,
           recipientRole: "manager",
         });
         if (input.assignedTo) {
@@ -100,6 +124,7 @@ export function WorkOrdersPage() {
             title: "New job assigned",
             message: `"${input.title}" has been assigned to you.`,
             workOrderId: wo.id,
+            userId: assignedUserId(input.assignedTo),
             recipientRole: "technician",
           });
         }
@@ -117,7 +142,7 @@ export function WorkOrdersPage() {
     }
   }
 
-  const viewing = viewingId ? workOrders.find((w) => w.id === viewingId) ?? null : null;
+  const viewing = viewingId ? scopedWorkOrders.find((w) => w.id === viewingId) ?? null : null;
   const viewingCustomer = viewing?.customerId ? getCustomer(viewing.customerId) : null;
 
   return (
@@ -126,16 +151,20 @@ export function WorkOrdersPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Work Orders</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {workOrders.length} {workOrders.length === 1 ? "work order" : "work orders"} total
+            {isTechnician
+              ? `${scopedWorkOrders.length} ${scopedWorkOrders.length === 1 ? "work order" : "work orders"} assigned to you`
+              : `${scopedWorkOrders.length} ${scopedWorkOrders.length === 1 ? "work order" : "work orders"} total`}
           </p>
         </div>
-        <button
-          onClick={openAdd}
-          className="flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
-        >
-          <Plus className="h-4 w-4" />
-          Create work order
-        </button>
+        {!isTechnician && (
+          <button
+            onClick={openAdd}
+            className="flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"
+          >
+            <Plus className="h-4 w-4" />
+            Create work order
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -168,8 +197,9 @@ export function WorkOrdersPage() {
 
       {filtered.length === 0 ? (
         <EmptyState
-          hasWorkOrders={workOrders.length > 0}
+          hasWorkOrders={scopedWorkOrders.length > 0}
           onAdd={openAdd}
+          canAdd={!isTechnician}
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -217,28 +247,30 @@ export function WorkOrdersPage() {
                     </div>
                   </div>
 
-                  <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEdit(workOrder);
-                      }}
-                      aria-label={`Edit ${workOrder.title}`}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmDelete(workOrder);
-                      }}
-                      aria-label={`Delete ${workOrder.title}`}
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-error-50 hover:text-error-600 dark:text-slate-400 dark:hover:bg-error-950 dark:hover:text-error-500"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                  {!isTechnician && (
+                    <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEdit(workOrder);
+                        }}
+                        aria-label={`Edit ${workOrder.title}`}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDelete(workOrder);
+                        }}
+                        aria-label={`Delete ${workOrder.title}`}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-error-50 hover:text-error-600 dark:text-slate-400 dark:hover:bg-error-950 dark:hover:text-error-500"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 </li>
               );
             })}
@@ -261,11 +293,15 @@ export function WorkOrdersPage() {
         workOrder={viewing}
         customer={viewingCustomer}
         onClose={() => setViewingId(null)}
-        onEdit={openEdit}
-        onDelete={(w) => {
-          setViewingId(null);
-          setConfirmDelete(w);
-        }}
+        onEdit={isTechnician ? undefined : openEdit}
+        onDelete={
+          isTechnician
+            ? undefined
+            : (w) => {
+                setViewingId(null);
+                setConfirmDelete(w);
+              }
+        }
       />
 
       {confirmDelete && (
@@ -303,9 +339,11 @@ export function WorkOrdersPage() {
 function EmptyState({
   hasWorkOrders,
   onAdd,
+  canAdd,
 }: {
   hasWorkOrders: boolean;
   onAdd: () => void;
+  canAdd: boolean;
 }) {
   return (
     <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
@@ -318,9 +356,11 @@ function EmptyState({
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
         {hasWorkOrders
           ? "Try a different search or filter."
-          : "Create your first work order to start dispatching jobs."}
+          : canAdd
+            ? "Create your first work order to start dispatching jobs."
+            : "You don't have any work orders assigned to you yet."}
       </p>
-      {!hasWorkOrders && (
+      {!hasWorkOrders && canAdd && (
         <button
           onClick={onAdd}
           className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700"

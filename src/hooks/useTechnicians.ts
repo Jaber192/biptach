@@ -20,6 +20,7 @@ type TechnicianRow = {
 function rowToTechnician(row: TechnicianRow): Technician {
   return {
     id: row.id,
+    user_id: row.user_id,
     name: row.name,
     phone: row.phone,
     email: row.email,

@@ -132,11 +132,14 @@ export function SchedulingPage() {
       scheduledDate: assigning.scheduledDate,
     });
     if (technicianId && technicianId !== assigning.assignedTo) {
+      // Deliver the notification only to the assigned technician's user account
+      const assignedUser = technicians.find((t) => t.id === technicianId)?.user_id ?? null;
       push({
         type: "job_assigned",
         title: "New job assigned",
         message: `"${assigning.title}" has been assigned to you.`,
         workOrderId: assigning.id,
+        userId: assignedUser,
         recipientRole: "technician",
       });
     }

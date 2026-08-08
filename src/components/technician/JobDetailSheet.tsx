@@ -89,6 +89,7 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
       title: "Job started",
       message: `"${workOrder!.title}" was started.`,
       workOrderId: workOrder!.id,
+      userId: null,
       recipientRole: "manager",
     });
   }
@@ -100,6 +101,7 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
       title: "Clocked in",
       message: `Clocked in on "${workOrder!.title}".`,
       workOrderId: workOrder!.id,
+      userId: null,
       recipientRole: "technician",
     });
   }
@@ -111,6 +113,7 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
       title: "Clocked out",
       message: `Clocked out on "${workOrder!.title}".`,
       workOrderId: workOrder!.id,
+      userId: null,
       recipientRole: "technician",
     });
   }
@@ -129,6 +132,7 @@ export function JobDetailSheet({ workOrder, customer, onClose, onPatch }: JobDet
       title: "Job completed",
       message: `"${workOrder!.title}" was completed.`,
       workOrderId: workOrder!.id,
+      userId: null,
       recipientRole: "manager",
     });
   }

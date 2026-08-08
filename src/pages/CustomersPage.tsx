@@ -47,6 +47,7 @@ export function CustomersPage() {
           title: "Customer added",
           message: `"${input.name}" was added to your customers.`,
           workOrderId: null,
+          userId: null,
           recipientRole: "manager",
         });
       }

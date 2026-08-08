@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useWorkOrders } from "../hooks/useWorkOrders";
 import { useCustomers } from "../hooks/useCustomers";
 import { useTechnicians } from "../hooks/useTechnicians";
+import { resolveCurrentTechnician, filterWorkOrdersByTechnician } from "../utils/currentTechnician";
 import type { UserRole } from "../types";
 
 interface StatCard {
@@ -57,12 +58,14 @@ export function DashboardPage() {
   const { customers } = useCustomers();
   const { technicians } = useTechnicians();
 
+  const myTechnician = useMemo(
+    () => resolveCurrentTechnician(profile, technicians),
+    [profile, technicians],
+  );
+
   const stats: StatCard[] = useMemo(() => {
     if (role === "technician") {
-      const myTech = technicians.find((t) => t.name.toLowerCase() === profile?.name?.toLowerCase()) ?? null;
-      const myJobs = myTech
-        ? workOrders.filter((w) => w.assignedTo === myTech.id)
-        : workOrders.filter((w) => Boolean(w.assignedTo));
+      const myJobs = filterWorkOrdersByTechnician(workOrders, myTechnician);
       const active = myJobs.filter((w) => w.status === "pending" || w.status === "in_progress").length;
       const scheduledToday = myJobs.filter((w) => w.status === "scheduled" && isToday(w.scheduledDate)).length;
       const completedThisWeek = myJobs.filter((w) => w.status === "completed").length;
@@ -88,7 +91,7 @@ export function DashboardPage() {
       { label: "Scheduled Today", value: String(workOrders.filter((w) => w.status === "scheduled" && isToday(w.scheduledDate)).length), icon: CalendarClock, color: "text-warning-600" },
       { label: "Team Members", value: String(technicians.length), icon: TrendingUp, color: "text-primary-600" },
     ];
-  }, [role, profile, workOrders, customers, technicians]);
+  }, [role, myTechnician, workOrders, customers, technicians]);
 
   return (
     <div className="space-y-6">
