@@ -29,8 +29,39 @@ const INVITE_ROLES: InvitationRole[] = ["manager", "dispatcher", "technician"];
 const MANAGEABLE_ROLES: UserRole[] = ["manager", "dispatcher", "technician"];
 
 export function SettingsPage() {
-  const { profile } = useAuth();
+  const { profile: authProfile } = useAuth();
   const [tab, setTab] = useState<"profile" | "company" | "team" | "invitations">("profile");
+  // Live copy of the current user's profile, refreshed from the DB + kept in sync
+  // via a realtime subscription so the role badge and tab visibility always match
+  // the database (e.g. after an ownership transfer, even one done via SQL).
+  const [liveProfile, setLiveProfile] = useState<Profile | null>(authProfile);
+
+  useEffect(() => {
+    if (!authProfile) return;
+    setLiveProfile(authProfile);
+
+    const load = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", authProfile.id)
+        .maybeSingle();
+      if (data) setLiveProfile(data as Profile);
+    };
+    load();
+
+    const channel = supabase
+      .channel("settings-profile-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles", filter: `id=eq.${authProfile.id}` },
+        () => load(),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [authProfile]);
+
+  const profile = liveProfile ?? authProfile;
 
   if (!profile) return null;
 
