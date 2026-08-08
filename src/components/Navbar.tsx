@@ -14,9 +14,15 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Only show the "Dashboard" button when the user actually has a company set
+  // up. A session alone isn't enough — ProtectedRoute redirects users without a
+  // company_id to /signup ("Set up your company"), so showing a Dashboard button
+  // for them would just bounce them to the setup screen.
+  const canAccessDashboard = Boolean(session && profile?.company_id);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -59,7 +65,7 @@ export function Navbar() {
           >
             {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </button>
-          {session ? (
+          {canAccessDashboard ? (
             <Link
               to="/dashboard"
               className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow-md"
@@ -120,7 +126,7 @@ export function Navbar() {
               </button>
             ))}
             <div className="mt-3 flex flex-col gap-2">
-              {session ? (
+              {canAccessDashboard ? (
                 <Link
                   to="/dashboard"
                   onClick={() => setMenuOpen(false)}
