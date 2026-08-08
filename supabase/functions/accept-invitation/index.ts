@@ -73,10 +73,22 @@ Deno.serve(async (req: Request) => {
       .insert({ company_id: invitation.company_id, user_id: user.id, role: invitation.role });
     if (membershipError) throw membershipError;
 
+    // Upsert the profile row so this works even if the auto-create trigger on
+    // auth.users didn't fire (e.g. after the database was cleared/reset and the
+    // profile row is missing). A plain UPDATE would silently affect 0 rows and
+    // leave the user without a profile, causing an infinite loading loop.
     const { error: profileError } = await supabase
       .from("profiles")
-      .update({ role: invitation.role, company_id: invitation.company_id })
-      .eq("id", user.id);
+      .upsert(
+        {
+          id: user.id,
+          name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
+          role: invitation.role,
+          company_id: invitation.company_id,
+          is_active: true,
+        },
+        { onConflict: "id" },
+      );
     if (profileError) throw profileError;
 
     // For invited technicians, create a technicians record linked to the user

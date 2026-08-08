@@ -11,10 +11,14 @@ export function SignUpPage() {
   const [params] = useSearchParams();
   const initialInvite = params.get("invite") ?? "";
 
-  const signedInWithoutCompany = Boolean(session?.user && profile && !profile.company_id);
+  // A user is "signed in without a company" when they have a session but no
+  // company yet. This includes the case where the profile row is missing
+  // entirely (e.g. after the DB was cleared) — profile may be null, so we only
+  // require a session and no company_id.
+  const signedInWithoutCompany = Boolean(session?.user && !profile?.company_id);
 
   const [mode, setMode] = useState<"company" | "join">(initialInvite ? "join" : "company");
-  const [name, setName] = useState(profile?.name ?? "");
+  const [name, setName] = useState(profile?.name ?? session?.user?.user_metadata?.name ?? "");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [companyName, setCompanyName] = useState("");

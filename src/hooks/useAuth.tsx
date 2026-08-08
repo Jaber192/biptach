@@ -54,12 +54,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const p = data as Profile | null;
     setProfile(p);
     
-    // Save profile to localStorage for instant offline restore
     if (p) {
+      // Save profile to localStorage for instant offline restore
       try {
         localStorage.setItem('biptach-profile', JSON.stringify(p));
       } catch (e) {
         console.warn('Failed to cache profile to localStorage:', e);
+      }
+    } else {
+      // Profile row is missing (e.g. DB was cleared/reset). Clear any stale
+      // cached profile/company so the offline path doesn't resurrect them.
+      console.warn('[Auth] No profile row found for user', uid, '— clearing stale cache');
+      try {
+        localStorage.removeItem('biptach-profile');
+        localStorage.removeItem('biptach-company');
+      } catch (e) {
+        console.warn('Failed to clear stale profile cache:', e);
       }
     }
     
@@ -198,6 +208,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setProfile(null);
           setCompany(null);
+          // Session is gone — clear any stale cached profile/company so the
+          // offline path doesn't restore data from a previous account.
+          try {
+            localStorage.removeItem('biptach-profile');
+            localStorage.removeItem('biptach-company');
+          } catch (e) {
+            console.warn('Failed to clear stale profile cache:', e);
+          }
         }
         if (mounted) setLoading(false);
       })();
@@ -224,21 +242,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return { error: error.message };
     if (!data.user) return { error: "Failed to create account" };
 
-    // Wait for the profile row (created by the DB trigger)
-    let p: Profile | null = null;
+    // Wait briefly for the profile row (normally created by the DB trigger on
+    // auth.users insert). This is non-fatal: if the trigger didn't fire (e.g.
+    // after the DB was cleared/reset), create-company below upserts the profile
+    // row itself, so we still proceed.
     for (let i = 0; i < 10; i++) {
       const { data: row } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", data.user.id)
         .maybeSingle();
-      p = row as Profile | null;
-      if (p) break;
+      if (row) break;
       await new Promise((r) => setTimeout(r, 200));
     }
-    if (!p) return { error: "Profile was not created" };
 
-    // Create the company via edge function (sets role=owner + company_id)
+    // Create the company via edge function (sets role=owner + company_id and
+    // upserts the profile row if it's missing).
     const fnResponse = await supabase.functions.invoke("create-company", {
       body: { company_name: companyName },
     });
@@ -273,6 +292,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut({ scope: "local" });
     setProfile(null);
     setCompany(null);
+    // Clear cached profile/company so a subsequent login doesn't restore stale
+    // data from a previous account (e.g. after the DB was cleared/reset).
+    try {
+      localStorage.removeItem('biptach-profile');
+      localStorage.removeItem('biptach-company');
+    } catch (e) {
+      console.warn('Failed to clear stale profile cache:', e);
+    }
   }
 
   async function refreshProfile(): Promise<Profile | null> {

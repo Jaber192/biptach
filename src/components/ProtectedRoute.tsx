@@ -26,14 +26,12 @@ export function ProtectedRoute({
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-  // Wait for profile to load before deciding — otherwise a null profile
-  // (still loading) triggers a false redirect to /signup.
+  // If the session exists but the profile row is missing (e.g. the database was
+  // cleared/reset, or the auto-create trigger didn't fire), do NOT spin forever.
+  // Redirect to /signup so the user can create/join a company, which recreates
+  // the profile row via the create-company edge function / DB trigger.
   if (!profile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950">
-        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
-      </div>
-    );
+    return <Navigate to="/signup" state={{ from: location }} replace />;
   }
 
   if (roles && !roles.includes(profile.role)) {
