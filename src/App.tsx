@@ -1,5 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./hooks/useAuth";
 import { NotificationsProvider } from "./hooks/useNotifications";
 import { OfflineProvider } from "./hooks/useOfflineProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -41,29 +41,6 @@ function MarketingSite() {
   );
 }
 
-function AuthRedirect() {
-  const { session, loading } = useAuth();
-
-  // Redirect logged-in users to dashboard
-  if (!loading && session) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  // Show loading state while auth is being checked
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
-          <p className="text-slate-600 dark:text-slate-400">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return <MarketingSite />;
-}
-
 export default function App() {
   return (
     <AuthProvider>
@@ -71,7 +48,10 @@ export default function App() {
       <NotificationsProvider>
       <BrowserRouter>
         <Routes>
-          <Route index element={<AuthRedirect />} />
+          {/* The landing page always renders at "/", even for logged-in users,
+              so clicking the logo on the sign-in/sign-up pages always returns
+              to the marketing site. */}
+          <Route index element={<MarketingSite />} />
           <Route path="/signin" element={<SignInPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X, Moon, Sun } from "lucide-react";
+import { Menu, X, Moon, Sun, LayoutDashboard } from "lucide-react";
 import { Logo } from "./Logo";
 import { useTheme } from "../hooks/useTheme";
+import { useAuth } from "../hooks/useAuth";
 import { scrollToSection } from "../utils/scroll";
 
 const NAV_LINKS = [
@@ -13,6 +14,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const { theme, toggleTheme } = useTheme();
+  const { session } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -57,18 +59,30 @@ export function Navbar() {
           >
             {theme === "light" ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </button>
-          <Link
-            to="/signin"
-            className="text-sm font-semibold text-slate-700 transition-colors hover:text-primary-600 dark:text-slate-200 dark:hover:text-primary-400"
-          >
-            Sign in
-          </Link>
-          <Link
-            to="/signup"
-            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow-md"
-          >
-            Start free trial
-          </Link>
+          {session ? (
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow-md"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                to="/signin"
+                className="text-sm font-semibold text-slate-700 transition-colors hover:text-primary-600 dark:text-slate-200 dark:hover:text-primary-400"
+              >
+                Sign in
+              </Link>
+              <Link
+                to="/signup"
+                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-700 hover:shadow-md"
+              >
+                Start free trial
+              </Link>
+            </>
+          )}
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
@@ -106,20 +120,33 @@ export function Navbar() {
               </button>
             ))}
             <div className="mt-3 flex flex-col gap-2">
-              <Link
-                to="/signin"
-                onClick={() => setMenuOpen(false)}
-                className="rounded-lg border border-slate-200 px-4 py-2.5 text-center text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
-              >
-                Sign in
-              </Link>
-              <Link
-                to="/signup"
-                onClick={() => setMenuOpen(false)}
-                className="rounded-lg bg-primary-600 px-4 py-2.5 text-center text-sm font-semibold text-white"
-              >
-                Start free trial
-              </Link>
+              {session ? (
+                <Link
+                  to="/dashboard"
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-center text-sm font-semibold text-white"
+                >
+                  <LayoutDashboard className="h-4 w-4" />
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    to="/signin"
+                    onClick={() => setMenuOpen(false)}
+                    className="rounded-lg border border-slate-200 px-4 py-2.5 text-center text-sm font-semibold text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    to="/signup"
+                    onClick={() => setMenuOpen(false)}
+                    className="rounded-lg bg-primary-600 px-4 py-2.5 text-center text-sm font-semibold text-white"
+                  >
+                    Start free trial
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>
