@@ -69,15 +69,12 @@ Deno.serve(async (req: Request) => {
       .insert({ company_id: companyId, plan: "trial", seats: 5, status: "trialing" });
     if (subError) throw subError;
 
-    const { error: membershipError } = await supabase
-      .from("company_memberships")
-      .insert({ company_id: companyId, user_id: user.id, role: "owner" });
-    if (membershipError) throw membershipError;
-
-    // Upsert the profile row so this works even if the auto-create trigger on
-    // auth.users didn't fire (e.g. after the database was cleared/reset and the
-    // profile row is missing). A plain UPDATE would silently affect 0 rows and
-    // leave the user without a profile, causing an infinite loading loop.
+    // IMPORTANT: Upsert the profile row BEFORE inserting the membership.
+    // company_memberships.user_id has a FK -> profiles(id), so if the profile
+    // row is missing (e.g. the auto-create trigger on auth.users didn't fire
+    // after the database was cleared/reset), the membership insert would violate
+    // the FK constraint and return a 500. Creating the profile row first
+    // guarantees the FK is satisfied.
     const { error: profileError } = await supabase
       .from("profiles")
       .upsert(
@@ -91,6 +88,11 @@ Deno.serve(async (req: Request) => {
         { onConflict: "id" },
       );
     if (profileError) throw profileError;
+
+    const { error: membershipError } = await supabase
+      .from("company_memberships")
+      .insert({ company_id: companyId, user_id: user.id, role: "owner" });
+    if (membershipError) throw membershipError;
 
     return jsonResponse({ company_id: companyId }, 200);
   } catch (err) {

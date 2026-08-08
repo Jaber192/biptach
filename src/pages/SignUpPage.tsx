@@ -11,12 +11,6 @@ export function SignUpPage() {
   const [params] = useSearchParams();
   const initialInvite = params.get("invite") ?? "";
 
-  // A user is "signed in without a company" when they have a session but no
-  // company yet. This includes the case where the profile row is missing
-  // entirely (e.g. after the DB was cleared) — profile may be null, so we only
-  // require a session and no company_id.
-  const signedInWithoutCompany = Boolean(session?.user && !profile?.company_id);
-
   const [mode, setMode] = useState<"company" | "join">(initialInvite ? "join" : "company");
   const [name, setName] = useState(profile?.name ?? session?.user?.user_metadata?.name ?? "");
   const [email, setEmail] = useState("");
@@ -26,16 +20,35 @@ export function SignUpPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // A user is "signed in without a company" when they have a session but no
+  // company yet. This includes the case where the profile row is missing
+  // entirely (e.g. after the DB was cleared) — profile may be null, so we only
+  // require a session and no company_id. We intentionally exclude the moment
+  // we're submitting the initial signup: right after signUp() the session is set
+  // but the profile/company isn't set up yet, and flipping to this mode mid-
+  // submission would cause a confusing double-submit of create-company.
+  const signedInWithoutCompany = Boolean(
+    !submitting && session?.user && !profile?.company_id,
+  );
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
 
+    console.log('[SignUpPage] handleSubmit — signedInWithoutCompany:', signedInWithoutCompany,
+      '| session:', !!session?.user, '| profile:', profile ? JSON.stringify({ id: profile.id, company_id: profile.company_id, role: profile.role }) : 'null',
+      '| mode:', mode, '| companyName:', companyName);
+
     if (signedInWithoutCompany) {
       if (mode === "company") {
-        const { error: fnError } = await supabase.functions.invoke("create-company", {
+        const { error: fnError, data: fnData } = await supabase.functions.invoke("create-company", {
           body: { company_name: companyName },
         });
+        console.log('[SignUpPage] create-company (signedInWithoutCompany path) response:', JSON.stringify({
+          error: fnError?.message ?? null,
+          data: fnData ?? null,
+        }));
         const errMsg = fnError?.message ?? extractEdgeError(fnError?.data);
         if (errMsg) {
           setError(errMsg);

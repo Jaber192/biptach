@@ -68,15 +68,12 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "User already belongs to a company" }, 400);
     }
 
-    const { error: membershipError } = await supabase
-      .from("company_memberships")
-      .insert({ company_id: invitation.company_id, user_id: user.id, role: invitation.role });
-    if (membershipError) throw membershipError;
-
-    // Upsert the profile row so this works even if the auto-create trigger on
-    // auth.users didn't fire (e.g. after the database was cleared/reset and the
-    // profile row is missing). A plain UPDATE would silently affect 0 rows and
-    // leave the user without a profile, causing an infinite loading loop.
+    // IMPORTANT: Upsert the profile row BEFORE inserting the membership.
+    // company_memberships.user_id has a FK -> profiles(id), so if the profile
+    // row is missing (e.g. the auto-create trigger on auth.users didn't fire
+    // after the database was cleared/reset), the membership insert would violate
+    // the FK constraint and return a 500. Creating the profile row first
+    // guarantees the FK is satisfied.
     const { error: profileError } = await supabase
       .from("profiles")
       .upsert(
@@ -90,6 +87,11 @@ Deno.serve(async (req: Request) => {
         { onConflict: "id" },
       );
     if (profileError) throw profileError;
+
+    const { error: membershipError } = await supabase
+      .from("company_memberships")
+      .insert({ company_id: invitation.company_id, user_id: user.id, role: invitation.role });
+    if (membershipError) throw membershipError;
 
     // For invited technicians, create a technicians record linked to the user
     // account so the frontend can resolve "my work orders / my notifications"

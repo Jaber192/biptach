@@ -246,21 +246,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // auth.users insert). This is non-fatal: if the trigger didn't fire (e.g.
     // after the DB was cleared/reset), create-company below upserts the profile
     // row itself, so we still proceed.
+    let profileRowFound = false;
     for (let i = 0; i < 10; i++) {
       const { data: row } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", data.user.id)
         .maybeSingle();
-      if (row) break;
+      if (row) {
+        profileRowFound = true;
+        break;
+      }
       await new Promise((r) => setTimeout(r, 200));
     }
+    console.log('[Auth][signUpWithCompany] profile row found after wait:', profileRowFound, 'uid:', data.user.id);
 
     // Create the company via edge function (sets role=owner + company_id and
     // upserts the profile row if it's missing).
     const fnResponse = await supabase.functions.invoke("create-company", {
       body: { company_name: companyName },
     });
+    console.log('[Auth][signUpWithCompany] create-company response:', JSON.stringify({
+      status: fnResponse.error ? 'non-2xx' : 'ok',
+      error: fnResponse.error?.message ?? null,
+      data: fnResponse.data ?? null,
+    }));
     const fnError = fnResponse.error ?? extractEdgeError(fnResponse.data);
     if (fnError) return { error: fnError };
 
