@@ -160,4 +160,5 @@ export interface AuthContextValue {
   acceptInvitation: (inviteCode: string) => Promise<{ error: string | null }>;
   resetPassword: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<Profile | null>;
 }

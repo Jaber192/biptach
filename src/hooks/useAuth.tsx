@@ -275,9 +275,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCompany(null);
   }
 
+  async function refreshProfile(): Promise<Profile | null> {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    if (!uid) return null;
+    return loadProfile(uid);
+  }
+
   return (
     <AuthContext.Provider
-      value={{ session, profile, company, loading, signIn, signUpWithCompany, acceptInvitation, resetPassword, signOut }}
+      value={{ session, profile, company, loading, signIn, signUpWithCompany, acceptInvitation, resetPassword, signOut, refreshProfile }}
     >
       {children}
     </AuthContext.Provider>

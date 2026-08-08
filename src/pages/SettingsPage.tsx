@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { User, Users, Save, Check, Shield, Loader as Loader2, Building2, Mail, Plus, Trash2, Copy, Wrench, RefreshCw } from "lucide-react";
+import { User, Users, Save, Check, Shield, Loader as Loader2, Building2, Mail, Plus, Trash2, Copy, Wrench, RefreshCw, ArrowRightLeft, X, KeyRound, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { TECHNICIAN_COLORS } from "../hooks/useTechnicians";
@@ -23,6 +23,10 @@ const ROLE_STYLES: Record<UserRole, string> = {
 };
 
 const INVITE_ROLES: InvitationRole[] = ["manager", "dispatcher", "technician"];
+
+// Roles the owner can assign to team members (owner is excluded — ownership is
+// transferred via the dedicated "Transfer ownership" flow).
+const MANAGEABLE_ROLES: UserRole[] = ["manager", "dispatcher", "technician"];
 
 export function SettingsPage() {
   const { profile } = useAuth();
@@ -481,9 +485,19 @@ function CompanySettings() {
 }
 
 function TeamManagement() {
+  const { profile, refreshProfile } = useAuth();
   const [members, setMembers] = useState<ProfileRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Transfer ownership modal state
+  const [transferTarget, setTransferTarget] = useState<ProfileRow | null>(null);
+  const [transferCode, setTransferCode] = useState("");
+  const [sendingCode, setSendingCode] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
+  const [transferNotice, setTransferNotice] = useState<string | null>(null);
+  const [transferSuccess, setTransferSuccess] = useState(false);
 
   const loadMembers = useCallback(async () => {
     const { data, error } = await supabase
@@ -507,9 +521,14 @@ function TeamManagement() {
 
   async function updateRole(id: string, role: UserRole) {
     setUpdatingId(id);
-    const { error } = await supabase.from("profiles").update({ role }).eq("id", id);
+    // Keep profiles.role and company_memberships.role in sync so the edge
+    // functions (which authorize via company_memberships) stay consistent.
+    const { error: profileError } = await supabase.from("profiles").update({ role }).eq("id", id);
+    if (!profileError) {
+      await supabase.from("company_memberships").update({ role }).eq("user_id", id);
+    }
     setUpdatingId(null);
-    if (error) console.error("Failed to update role:", error.message);
+    if (profileError) console.error("Failed to update role:", profileError.message);
   }
 
   async function toggleActive(id: string, current: boolean) {
@@ -517,6 +536,66 @@ function TeamManagement() {
     const { error } = await supabase.from("profiles").update({ is_active: !current }).eq("id", id);
     setUpdatingId(null);
     if (error) console.error("Failed to toggle active:", error.message);
+  }
+
+  function openTransferModal(m: ProfileRow) {
+    setTransferTarget(m);
+    setTransferCode("");
+    setTransferError(null);
+    setTransferNotice(null);
+    setTransferSuccess(false);
+  }
+
+  function closeTransferModal() {
+    setTransferTarget(null);
+    setTransferCode("");
+    setTransferError(null);
+    setTransferNotice(null);
+    setTransferSuccess(false);
+  }
+
+  async function handleSendCode() {
+    if (!transferTarget) return;
+    setSendingCode(true);
+    setTransferError(null);
+    setTransferNotice(null);
+    const { data, error } = await supabase.functions.invoke("transfer-ownership", {
+      body: { action: "send-code", to_user_id: transferTarget.id },
+    });
+    setSendingCode(false);
+    if (error) {
+      setTransferError(error?.message ?? "Failed to send verification code");
+      return;
+    }
+    if (data?.error) {
+      setTransferError(data.error);
+      return;
+    }
+    setTransferNotice(data?.message ?? "Verification code sent to your email.");
+  }
+
+  async function handleConfirmTransfer() {
+    if (!transferTarget) return;
+    setConfirming(true);
+    setTransferError(null);
+    setTransferNotice(null);
+    const { data, error } = await supabase.functions.invoke("transfer-ownership", {
+      body: { action: "confirm", to_user_id: transferTarget.id, code: transferCode.trim() },
+    });
+    setConfirming(false);
+    if (error) {
+      setTransferError(error?.message ?? "Failed to transfer ownership");
+      return;
+    }
+    if (data?.error) {
+      setTransferError(data.error);
+      return;
+    }
+    setTransferSuccess(true);
+    setTransferNotice(data?.message ?? "Ownership transferred successfully.");
+    await loadMembers();
+    // Refresh the current user's profile so the old owner's UI reflects manager role.
+    await refreshProfile();
   }
 
   if (loading) {
@@ -528,63 +607,173 @@ function TeamManagement() {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="border-b border-slate-200 px-6 py-4 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary-600" />
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Team Members</h2>
+    <>
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="border-b border-slate-200 px-6 py-4 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary-600" />
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Team Members</h2>
+          </div>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Manage roles and access for your team. {members.length} member{members.length !== 1 ? "s" : ""} total.
+          </p>
         </div>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Manage roles and access for your team. {members.length} member{members.length !== 1 ? "s" : ""} total.
-        </p>
-      </div>
-      <div className="divide-y divide-slate-200 dark:divide-slate-800">
-        {members.length === 0 ? (
-          <p className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">No team members found.</p>
-        ) : (
-          members.map((m) => (
-            <div key={m.id} className="flex items-center gap-4 px-6 py-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                {m.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-slate-900 dark:text-white">{m.name}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{m.is_active ? "Active" : "Inactive"}</p>
-              </div>
-              {updatingId === m.id ? (
-                <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-              ) : (
-                <>
-                  <select
-                    value={m.role}
-                    onChange={(e) => updateRole(m.id, e.target.value as UserRole)}
-                    disabled={m.role === "owner"}
-                    className={`rounded-lg border-0 px-2.5 py-1.5 text-xs font-medium outline-none ring-1 ring-inset ring-slate-300 transition-colors focus:ring-2 focus:ring-primary-500/30 disabled:opacity-60 dark:ring-slate-700 dark:bg-slate-800 dark:text-white ${ROLE_STYLES[m.role]}`}
-                  >
-                    <option value="owner">Owner</option>
-                    <option value="manager">Manager</option>
-                    <option value="dispatcher">Dispatcher</option>
-                    <option value="technician">Technician</option>
-                  </select>
-                  {m.role !== "owner" && (
-                    <button
-                      onClick={() => toggleActive(m.id, m.is_active)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                        m.is_active
-                          ? "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                          : "bg-accent-600 text-white hover:bg-accent-700"
-                      }`}
+        <div className="divide-y divide-slate-200 dark:divide-slate-800">
+          {members.length === 0 ? (
+            <p className="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">No team members found.</p>
+          ) : (
+            members.map((m) => (
+              <div key={m.id} className="flex flex-wrap items-center gap-3 px-6 py-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                  {m.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-slate-900 dark:text-white">
+                    {m.name}
+                    {m.id === profile?.id && (
+                      <span className="ml-2 text-xs font-normal text-slate-400">(you)</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{m.is_active ? "Active" : "Inactive"}</p>
+                </div>
+                {updatingId === m.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                ) : (
+                  <>
+                    <select
+                      value={m.role}
+                      onChange={(e) => updateRole(m.id, e.target.value as UserRole)}
+                      disabled={m.role === "owner"}
+                      className={`rounded-lg border-0 px-2.5 py-1.5 text-xs font-medium outline-none ring-1 ring-inset ring-slate-300 transition-colors focus:ring-2 focus:ring-primary-500/30 disabled:opacity-60 dark:ring-slate-700 dark:bg-slate-800 dark:text-white ${ROLE_STYLES[m.role]}`}
                     >
-                      {m.is_active ? "Deactivate" : "Activate"}
-                    </button>
-                  )}
-                </>
+                      {MANAGEABLE_ROLES.map((r) => (
+                        <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                      ))}
+                    </select>
+                    {m.role !== "owner" && (
+                      <>
+                        <button
+                          onClick={() => toggleActive(m.id, m.is_active)}
+                          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                            m.is_active
+                              ? "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                              : "bg-accent-600 text-white hover:bg-accent-700"
+                          }`}
+                        >
+                          {m.is_active ? "Deactivate" : "Activate"}
+                        </button>
+                        <button
+                          onClick={() => openTransferModal(m)}
+                          disabled={!m.is_active}
+                          title={!m.is_active ? "Cannot transfer ownership to an inactive member" : "Transfer ownership"}
+                          className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                        >
+                          <ArrowRightLeft className="h-3.5 w-3.5" />
+                          Transfer ownership
+                        </button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {transferTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
+            <div className="mb-4 flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-100 text-accent-700 dark:bg-accent-950 dark:text-accent-300">
+                  {transferSuccess ? <CheckCircle2 className="h-5 w-5" /> : <ArrowRightLeft className="h-5 w-5" />}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">
+                    {transferSuccess ? "Ownership transferred" : "Transfer ownership"}
+                  </h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {transferSuccess ? "You are now a manager." : `to ${transferTarget.name}`}
+                  </p>
+                </div>
+              </div>
+              {!transferSuccess && (
+                <button
+                  onClick={closeTransferModal}
+                  className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               )}
             </div>
-          ))
-        )}
-      </div>
-    </div>
+
+            {transferSuccess ? (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  {transferTarget.name} is now the owner of the company. You have been changed to a manager.
+                </p>
+                <button
+                  onClick={closeTransferModal}
+                  className="w-full rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-start gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>
+                    After confirming, <strong>{transferTarget.name}</strong> will become the owner and you will
+                    become a <strong>manager</strong>. This action cannot be undone.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleSendCode}
+                  disabled={sendingCode}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-700 disabled:opacity-60"
+                >
+                  {sendingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                  {sendingCode ? "Sending..." : "Send verification code to my email"}
+                </button>
+
+                {transferNotice && !transferError && (
+                  <p className="text-sm text-primary-600 dark:text-primary-400">{transferNotice}</p>
+                )}
+                {transferError && (
+                  <p className="text-sm text-error-600 dark:text-error-400">{transferError}</p>
+                )}
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Verification code
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={transferCode}
+                    onChange={(e) => setTransferCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="6-digit code"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-center font-mono text-lg tracking-widest text-slate-900 outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  />
+                </div>
+
+                <button
+                  onClick={handleConfirmTransfer}
+                  disabled={confirming || transferCode.length !== 6}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRightLeft className="h-4 w-4" />}
+                  {confirming ? "Transferring..." : "Confirm transfer"}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
