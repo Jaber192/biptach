@@ -46,18 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (error) {
-      console.error("[Auth][loadProfile] Failed to load profile:", error.message, "| uid:", uid);
+      console.error("Failed to load profile:", error.message);
       setProfile(null);
       setCompany(null);
       return null;
     }
     const p = data as Profile | null;
-    console.log(
-      "[Auth][loadProfile] uid:",
-      uid,
-      "| profile:",
-      p ? JSON.stringify({ id: p.id, role: p.role, company_id: p.company_id }) : "NULL",
-    );
     setProfile(p);
     
     if (p) {

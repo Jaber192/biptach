@@ -39,13 +39,9 @@ Deno.serve(async (req: Request) => {
       return jsonResponse({ error: "Company name is required" }, 400);
     }
 
-    // Fast-fail pre-check (not atomic on its own — see the membership insert
-    // below, which is the real guard against concurrent double-invokes).
-    // NOTE: The deployed company_memberships table has no `id` column, so we
-    // select `company_id` (which always exists) just to test for existence.
     const { data: existingMembership } = await supabase
       .from("company_memberships")
-      .select("company_id")
+      .select("id")
       .eq("user_id", user.id)
       .maybeSingle();
 
@@ -93,46 +89,10 @@ Deno.serve(async (req: Request) => {
       );
     if (profileError) throw profileError;
 
-    // The membership insert is the ATOMIC guard against concurrent double-
-    // invokes. company_memberships.user_id is UNIQUE, so if two invocations
-    // race past the pre-check above, only ONE membership insert can succeed;
-    // the other hits a unique-violation and we clean up its orphaned company.
     const { error: membershipError } = await supabase
       .from("company_memberships")
       .insert({ company_id: companyId, user_id: user.id, role: "owner" });
-
-    if (membershipError) {
-      // 23505 = unique_violation. This fires when a concurrent invocation already
-      // inserted a membership for this user (the atomic guard). Any other error
-      // (e.g. a check-constraint or FK failure) is a real problem and must throw.
-      const isUniqueViolation =
-        typeof membershipError.code === "string" && membershipError.code === "23505";
-
-      if (isUniqueViolation) {
-        // Another invocation already created a membership for this user. Roll
-        // back the company we just created (cascades to settings/subscription)
-        // and re-point the profile at the winning company, then report the
-        // conflict cleanly instead of leaving duplicate rows behind.
-        await supabase.from("companies").delete().eq("id", companyId);
-
-        const { data: winner } = await supabase
-          .from("company_memberships")
-          .select("company_id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (winner?.company_id) {
-          await supabase
-            .from("profiles")
-            .update({ company_id: winner.company_id, role: "owner" })
-            .eq("id", user.id);
-        }
-
-        return jsonResponse({ error: "User already belongs to a company" }, 400);
-      }
-
-      throw membershipError;
-    }
+    if (membershipError) throw membershipError;
 
     return jsonResponse({ company_id: companyId }, 200);
   } catch (err) {
