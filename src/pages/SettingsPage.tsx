@@ -669,41 +669,45 @@ function TeamManagement() {
                 </div>
                 {updatingId === m.id ? (
                   <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                ) : m.role === "owner" ? (
+                  // The owner's role is not editable (ownership is transferred via
+                  // the dedicated "Transfer ownership" flow). Render a static badge
+                  // instead of a select — a select whose options only contain
+                  // manageable roles would fall back to showing "Manager" for the
+                  // owner's row because "owner" isn't among its options.
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${ROLE_STYLES.owner}`}>
+                    {ROLE_LABELS.owner}
+                  </span>
                 ) : (
                   <>
                     <select
                       value={m.role}
                       onChange={(e) => updateRole(m.id, e.target.value as UserRole)}
-                      disabled={m.role === "owner"}
-                      className={`rounded-lg border-0 px-2.5 py-1.5 text-xs font-medium outline-none ring-1 ring-inset ring-slate-300 transition-colors focus:ring-2 focus:ring-primary-500/30 disabled:opacity-60 dark:ring-slate-700 dark:bg-slate-800 dark:text-white ${ROLE_STYLES[m.role]}`}
+                      className={`rounded-lg border-0 px-2.5 py-1.5 text-xs font-medium outline-none ring-1 ring-inset ring-slate-300 transition-colors focus:ring-2 focus:ring-primary-500/30 dark:ring-slate-700 dark:bg-slate-800 dark:text-white ${ROLE_STYLES[m.role]}`}
                     >
                       {MANAGEABLE_ROLES.map((r) => (
                         <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                       ))}
                     </select>
-                    {m.role !== "owner" && (
-                      <>
-                        <button
-                          onClick={() => toggleActive(m.id, m.is_active)}
-                          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                            m.is_active
-                              ? "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                              : "bg-accent-600 text-white hover:bg-accent-700"
-                          }`}
-                        >
-                          {m.is_active ? "Deactivate" : "Activate"}
-                        </button>
-                        <button
-                          onClick={() => openTransferModal(m)}
-                          disabled={!m.is_active}
-                          title={!m.is_active ? "Cannot transfer ownership to an inactive member" : "Transfer ownership"}
-                          className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
-                        >
-                          <ArrowRightLeft className="h-3.5 w-3.5" />
-                          Transfer ownership
-                        </button>
-                      </>
-                    )}
+                    <button
+                      onClick={() => toggleActive(m.id, m.is_active)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                        m.is_active
+                          ? "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                          : "bg-accent-600 text-white hover:bg-accent-700"
+                      }`}
+                    >
+                      {m.is_active ? "Deactivate" : "Activate"}
+                    </button>
+                    <button
+                      onClick={() => openTransferModal(m)}
+                      disabled={!m.is_active}
+                      title={!m.is_active ? "Cannot transfer ownership to an inactive member" : "Transfer ownership"}
+                      className="flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    >
+                      <ArrowRightLeft className="h-3.5 w-3.5" />
+                      Transfer ownership
+                    </button>
                   </>
                 )}
               </div>
