@@ -41,9 +41,11 @@ Deno.serve(async (req: Request) => {
 
     // Fast-fail pre-check (not atomic on its own — see the membership insert
     // below, which is the real guard against concurrent double-invokes).
+    // NOTE: The deployed company_memberships table has no `id` column, so we
+    // select `company_id` (which always exists) just to test for existence.
     const { data: existingMembership } = await supabase
       .from("company_memberships")
-      .select("id")
+      .select("company_id")
       .eq("user_id", user.id)
       .maybeSingle();
 
