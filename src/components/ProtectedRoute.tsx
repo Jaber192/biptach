@@ -31,6 +31,12 @@ export function ProtectedRoute({
   // Redirect to /signup so the user can create/join a company, which recreates
   // the profile row via the create-company edge function / DB trigger.
   if (!profile) {
+    console.warn(
+      "[ProtectedRoute] Redirecting to /signup — profile is NULL. session:",
+      !!session,
+      "| location:",
+      location.pathname,
+    );
     return <Navigate to="/signup" state={{ from: location }} replace />;
   }
 
@@ -40,6 +46,12 @@ export function ProtectedRoute({
   }
 
   if (!profile.company_id) {
+    console.warn(
+      "[ProtectedRoute] Redirecting to /signup — profile exists but company_id is NULL. profile:",
+      JSON.stringify({ id: profile.id, role: profile.role, company_id: profile.company_id }),
+      "| location:",
+      location.pathname,
+    );
     return <Navigate to="/signup" replace />;
   }
 

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Loader as Loader2, Building2, UserPlus } from "lucide-react";
 import { AuthLayout } from "../components/AuthLayout";
@@ -19,6 +19,14 @@ export function SignUpPage() {
   const [inviteCode, setInviteCode] = useState(initialInvite);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Synchronous re-entrancy guard. React state (submitting) is async — it isn't
+  // updated until the next render — so a rapid double-click can run handleSubmit
+  // twice before the button's disabled={submitting} takes effect. A ref is set
+  // synchronously and checked at the top of handleSubmit, so the second call is
+  // dropped immediately, preventing a double-invoke of the create-company edge
+  // function (which was creating duplicate company/settings/subscription/
+  // membership rows via a TOCTOU race).
+  const submittingRef = useRef(false);
 
   // A user is "signed in without a company" when they have a session but no
   // company yet. This includes the case where the profile row is missing
@@ -33,6 +41,12 @@ export function SignUpPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    // Drop any re-entrant submit (double-click / double-submit) immediately.
+    if (submittingRef.current) {
+      console.warn("[SignUpPage] handleSubmit ignored — already submitting");
+      return;
+    }
+    submittingRef.current = true;
     setError(null);
     setSubmitting(true);
 
@@ -53,6 +67,7 @@ export function SignUpPage() {
         if (errMsg) {
           setError(errMsg);
           setSubmitting(false);
+          submittingRef.current = false;
           return;
         }
       } else {
@@ -60,6 +75,7 @@ export function SignUpPage() {
         if (acceptError) {
           setError(acceptError);
           setSubmitting(false);
+          submittingRef.current = false;
           return;
         }
       }
@@ -75,6 +91,7 @@ export function SignUpPage() {
       if (error) {
         setError(error);
         setSubmitting(false);
+        submittingRef.current = false;
         return;
       }
       navigate("/dashboard");
@@ -87,17 +104,20 @@ export function SignUpPage() {
       if (signUpError) {
         setError(signUpError.message);
         setSubmitting(false);
+        submittingRef.current = false;
         return;
       }
       if (!data.user) {
         setError("Failed to create account");
         setSubmitting(false);
+        submittingRef.current = false;
         return;
       }
       const { error: acceptError } = await acceptInvitation(inviteCode);
       if (acceptError) {
         setError(acceptError);
         setSubmitting(false);
+        submittingRef.current = false;
         return;
       }
       navigate("/dashboard");
