@@ -12,6 +12,36 @@ function extractEdgeError(data: unknown): string | null {
   return null;
 }
 
+// Resolve a human-readable error message from a supabase.functions.invoke()
+// response. When an edge function returns a non-2xx status, supabase-js sets
+// `response.error` to a `FunctionsHttpError` object (NOT a string) and leaves
+// `response.data` as null. Rendering that object directly (e.g. via setError)
+// crashes React with "Objects are not valid as a React child" — a white screen.
+// The actual JSON body (e.g. { error: "Invalid invitation code" }) lives in the
+// error's `.context` Response, so we read it here and return the message string.
+async function resolveEdgeError(response: {
+  data: unknown;
+  error: unknown;
+}): Promise<string | null> {
+  // Non-2xx: error is a FunctionsHttpError with a `.context` Response body.
+  if (response.error) {
+    const err = response.error as { context?: Response; message?: string };
+    try {
+      if (err.context) {
+        const body = (await err.context.json()) as Record<string, unknown>;
+        const msg = body?.error;
+        if (typeof msg === "string" && msg) return msg;
+      }
+    } catch {
+      // Fall through to the generic message if the body can't be parsed.
+    }
+    if (typeof err.message === "string" && err.message) return err.message;
+    return "Operation failed";
+  }
+  // 2xx with an error field in the payload (e.g. a business-rule rejection).
+  return extractEdgeError(response.data);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthContextValue["session"]>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -282,7 +312,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       error: fnResponse.error?.message ?? null,
       data: fnResponse.data ?? null,
     }));
-    const fnError = fnResponse.error ?? extractEdgeError(fnResponse.data);
+    const fnError = await resolveEdgeError(fnResponse);
     if (fnError) return { error: fnError };
 
     await loadProfile(data.user.id);
@@ -293,7 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const fnResponse = await supabase.functions.invoke("accept-invitation", {
       body: { invite_code: inviteCode },
     });
-    const fnError = fnResponse.error ?? extractEdgeError(fnResponse.data);
+    const fnError = await resolveEdgeError(fnResponse);
     if (fnError) return { error: fnError };
 
     const { data: sessionData } = await supabase.auth.getSession();

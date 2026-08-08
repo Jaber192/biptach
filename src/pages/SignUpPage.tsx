@@ -42,14 +42,14 @@ export function SignUpPage() {
 
     if (signedInWithoutCompany) {
       if (mode === "company") {
-        const { error: fnError, data: fnData } = await supabase.functions.invoke("create-company", {
+        const fnResponse = await supabase.functions.invoke("create-company", {
           body: { company_name: companyName },
         });
         console.log('[SignUpPage] create-company (signedInWithoutCompany path) response:', JSON.stringify({
-          error: fnError?.message ?? null,
-          data: fnData ?? null,
+          error: fnResponse.error?.message ?? null,
+          data: fnResponse.data ?? null,
         }));
-        const errMsg = fnError?.message ?? extractEdgeError(fnData);
+        const errMsg = await resolveEdgeError(fnResponse);
         if (errMsg) {
           setError(errMsg);
           setSubmitting(false);
@@ -255,4 +255,30 @@ function extractEdgeError(data: unknown): string | null {
     return typeof msg === "string" ? msg : "Operation failed";
   }
   return null;
+}
+
+// Resolve a human-readable error message from a supabase.functions.invoke()
+// response. A non-2xx response sets `response.error` to a FunctionsHttpError
+// object (not a string) with the JSON body in its `.context` Response. Rendering
+// that object directly crashes React ("Objects are not valid as a React child"),
+// so we read the body and return the message string instead.
+async function resolveEdgeError(response: {
+  data: unknown;
+  error: unknown;
+}): Promise<string | null> {
+  if (response.error) {
+    const err = response.error as { context?: Response; message?: string };
+    try {
+      if (err.context) {
+        const body = (await err.context.json()) as Record<string, unknown>;
+        const msg = body?.error;
+        if (typeof msg === "string" && msg) return msg;
+      }
+    } catch {
+      // Fall through to the generic message if the body can't be parsed.
+    }
+    if (typeof err.message === "string" && err.message) return err.message;
+    return "Operation failed";
+  }
+  return extractEdgeError(response.data);
 }
