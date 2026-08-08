@@ -230,7 +230,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    if (error) return { error: error?.message ?? null };
+
+    // Wait for the profile to load BEFORE returning so the caller (SignInPage)
+    // can navigate to /dashboard with a fully-loaded profile. Otherwise
+    // ProtectedRoute sees profile === null and bounces the user to /signup
+    // ("Set up your company") — a confusing sign-in/sign-up mix-up.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const uid = sessionData.session?.user?.id;
+    if (uid) {
+      await loadProfile(uid);
+    }
+    return { error: null };
   }
 
   async function signUpWithCompany(name: string, email: string, password: string, companyName: string) {
